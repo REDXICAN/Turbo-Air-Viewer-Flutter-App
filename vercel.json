@@ -1,8 +1,8 @@
 {
-  "buildCommand": "chmod +x build_web.sh && ./build_web.sh",
+  "buildCommand": "flutter/bin/flutter build web --release --dart-define=SUPABASE_URL=$SUPABASE_URL --dart-define=SUPABASE_ANON_KEY=$SUPABASE_ANON_KEY --web-renderer html",
   "outputDirectory": "build/web",
   "framework": null,
-  "installCommand": "apt-get update && apt-get install -y curl git unzip xz-utils zip libglu1-mesa && git clone https://github.com/flutter/flutter.git -b stable && export PATH=\"$PATH:`pwd`/flutter/bin\" && flutter doctor && flutter pub get",
+  "installCommand": "git clone https://github.com/flutter/flutter.git -b stable && export PATH=\"$PATH:`pwd`/flutter/bin\" && flutter doctor && flutter pub get",
   "routes": [
     {
       "src": "/(.*)",
