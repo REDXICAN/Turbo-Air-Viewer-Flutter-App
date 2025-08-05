@@ -1,5 +1,5 @@
 {
-  "buildCommand": "flutter build web --release --web-renderer html",
+  "buildCommand": "chmod +x build_web.sh && ./build_web.sh",
   "outputDirectory": "build/web",
   "framework": null,
   "installCommand": "apt-get update && apt-get install -y curl git unzip xz-utils zip libglu1-mesa && git clone https://github.com/flutter/flutter.git -b stable && export PATH=\"$PATH:`pwd`/flutter/bin\" && flutter doctor && flutter pub get",
