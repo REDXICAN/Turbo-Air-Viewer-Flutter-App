@@ -1,12 +1,20 @@
 /// Configuration for the Turbo Air app
+/// Location: lib/core/config/app_config.dart
 class AppConfig {
-  // Supabase Configuration
-  static const String supabaseUrl = 'https://lxaritlhujdevalclhfc.supabase.co';
-  static const String supabaseAnonKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imx4YXJpdGxodWpkZXZhbGNsaGZjIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTMzOTg4NTIsImV4cCI6MjA2ODk3NDg1Mn0.2rapqW5LdMO9s4JeQOsuiqzfDmIcvvQT8OYDkA3albc';
+  // Supabase Configuration from environment variables
+  static const String supabaseUrl = String.fromEnvironment(
+    'SUPABASE_URL',
+    defaultValue: '',
+  );
+  
+  static const String supabaseAnonKey = String.fromEnvironment(
+    'SUPABASE_ANON_KEY',
+    defaultValue: '',
+  );
   
   // Edge Function URLs
-  static const String emailFunctionUrl = '$supabaseUrl/functions/v1/send-email';
-  static const String syncFunctionUrl = '$supabaseUrl/functions/v1/sync-data';
+  static String get emailFunctionUrl => '$supabaseUrl/functions/v1/send-email';
+  static String get syncFunctionUrl => '$supabaseUrl/functions/v1/sync-data';
   
   // App Settings
   static const int itemsPerPage = 20;

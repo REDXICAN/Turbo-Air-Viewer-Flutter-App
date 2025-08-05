@@ -1,13 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_adaptive_scaffold/flutter_adaptive_scaffold.dart';
-import '../features/products/presentation/screens/products_screen.dart';
-import '../features/cart/presentation/screens/cart_screen.dart';
-import '../features/clients/presentation/screens/clients_screen.dart';
-import '../features/quotes/presentation/screens/quotes_screen.dart';
-import '../features/profile/presentation/screens/profile_screen.dart';
-import '../features/auth/presentation/providers/auth_provider.dart';
-import '../core/widgets/sync_indicator.dart';
+import 'features/products/presentation/screens/products_screen.dart';
+import 'features/cart/presentation/screens/cart_screen.dart';
+import 'features/clients/presentation/screens/clients_screen.dart';
+import 'features/quotes/presentation/screens/quotes_screen.dart';
+import 'features/profile/presentation/screens/profile_screen.dart';
+import 'features/auth/presentation/providers/auth_provider.dart';
+import 'core/widgets/sync_indicator.dart';
 
 class HomeScreen extends ConsumerStatefulWidget {
   const HomeScreen({super.key});
