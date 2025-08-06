@@ -2,71 +2,53 @@
 import 'package:flutter/material.dart';
 
 class ProductImageHelper {
-  // Clean SKU for file path - handle special characters
-  static String _cleanSkuForPath(String sku) {
-    // Remove or replace problematic characters
-    return sku
-        .replaceAll('(', '')
-        .replaceAll(')', '')
-        .replaceAll('-L', '-L') // Keep -L suffix
-        .replaceAll(' ', '%20'); // Properly encode spaces for assets
+  // Get image path for a product
+  static String getImagePath(String sku, String page) {
+    // Try the most common pattern first
+    return 'assets/screenshots/$sku/$sku $page.png';
   }
 
-  // Get image paths to try (mimics Python's fallback logic)
-  static List<String> getImagePaths(String sku, String page) {
-    final cleanSku = _cleanSkuForPath(sku);
-
-    // Try multiple path variations like Python does
-    return [
-      'assets/screenshots/$sku/$sku $page.png', // Original SKU with space
-      'assets/screenshots/$sku/$sku$page.png', // Without space
-      'assets/screenshots/$cleanSku/${cleanSku}_$page.png', // Clean SKU with underscore
-      'assets/screenshots/$cleanSku/$cleanSku $page.png', // Clean SKU with space
-      'assets/screenshots/$sku/${sku}_P$page.png', // With P prefix format
-    ];
-  }
-
-  // Build product thumbnail with fallback
+  // Build product thumbnail
   static Widget buildProductThumbnail({
     required String sku,
     String page = 'P.1',
-    double width = 60,
-    double height = 60,
-    BoxFit fit = BoxFit.cover,
+    double size = 60,
     VoidCallback? onTap,
   }) {
-    final paths = getImagePaths(sku, page);
-
     return GestureDetector(
       onTap: onTap,
       child: Container(
-        width: width,
-        height: height,
+        width: size,
+        height: size,
         decoration: BoxDecoration(
           color: Colors.grey[200],
           borderRadius: BorderRadius.circular(8),
         ),
         child: ClipRRect(
           borderRadius: BorderRadius.circular(8),
-          child: _MultiPathImage(
-            paths: paths,
-            fit: fit,
-            errorWidget: const Icon(Icons.image, color: Colors.grey),
+          child: Image.asset(
+            getImagePath(sku, page),
+            fit: BoxFit.cover,
+            errorBuilder: (context, error, stackTrace) {
+              return Icon(
+                Icons.image,
+                color: Colors.grey[400],
+                size: size * 0.5,
+              );
+            },
           ),
         ),
       ),
     );
   }
 
-  // Build screenshot thumbnail with overlay (for product details)
+  // Build screenshot thumbnail with label
   static Widget buildScreenshotThumbnail({
     required String sku,
     required String page,
     required String label,
     VoidCallback? onTap,
   }) {
-    final paths = getImagePaths(sku, page);
-
     return GestureDetector(
       onTap: onTap,
       child: Container(
@@ -79,26 +61,37 @@ class ProductImageHelper {
           borderRadius: BorderRadius.circular(8),
           child: Stack(
             children: [
-              _MultiPathImage(
-                paths: paths,
+              // Image
+              Image.asset(
+                getImagePath(sku, page),
                 fit: BoxFit.contain,
-                errorWidget: Container(
-                  height: 120,
-                  alignment: Alignment.center,
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      const Icon(Icons.image_not_supported,
-                          color: Colors.grey, size: 40),
-                      const SizedBox(height: 8),
-                      Text(
-                        label,
-                        style: TextStyle(color: Colors.grey[600], fontSize: 12),
-                      ),
-                    ],
-                  ),
-                ),
+                width: double.infinity,
+                errorBuilder: (context, error, stackTrace) {
+                  return Container(
+                    height: 120,
+                    alignment: Alignment.center,
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(
+                          Icons.image_not_supported,
+                          color: Colors.grey[400],
+                          size: 40,
+                        ),
+                        const SizedBox(height: 8),
+                        Text(
+                          label,
+                          style: TextStyle(
+                            color: Colors.grey[600],
+                            fontSize: 12,
+                          ),
+                        ),
+                      ],
+                    ),
+                  );
+                },
               ),
+
               // Label overlay
               Positioned(
                 bottom: 0,
@@ -127,7 +120,8 @@ class ProductImageHelper {
                   ),
                 ),
               ),
-              // Zoom icon
+
+              // Zoom icon if clickable
               if (onTap != null)
                 Positioned(
                   top: 8,
@@ -152,15 +146,13 @@ class ProductImageHelper {
     );
   }
 
-  // Show full screen image viewer
+  // Show full screen image
   static void showFullScreenImage(
     BuildContext context,
     String sku,
     String page,
     String title,
   ) {
-    final paths = getImagePaths(sku, page);
-
     showDialog(
       context: context,
       builder: (context) => Dialog(
@@ -174,7 +166,8 @@ class ProductImageHelper {
               onTap: () => Navigator.pop(context),
               child: Container(color: Colors.black.withOpacity(0.9)),
             ),
-            // Image container
+
+            // Image
             Container(
               constraints: BoxConstraints(
                 maxWidth: MediaQuery.of(context).size.width * 0.9,
@@ -184,45 +177,48 @@ class ProductImageHelper {
                 panEnabled: true,
                 minScale: 0.5,
                 maxScale: 4,
-                child: _MultiPathImage(
-                  paths: paths,
+                child: Image.asset(
+                  getImagePath(sku, page),
                   fit: BoxFit.contain,
-                  errorWidget: Container(
-                    padding: const EdgeInsets.all(32),
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        const Icon(
-                          Icons.image_not_supported,
-                          size: 64,
-                          color: Colors.grey,
-                        ),
-                        const SizedBox(height: 16),
-                        Text(
-                          'Image not available',
-                          style: TextStyle(
-                            color: Colors.grey[700],
-                            fontSize: 16,
+                  errorBuilder: (context, error, stackTrace) {
+                    return Container(
+                      padding: const EdgeInsets.all(32),
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          const Icon(
+                            Icons.image_not_supported,
+                            size: 64,
+                            color: Colors.grey,
                           ),
-                        ),
-                        const SizedBox(height: 8),
-                        Text(
-                          'SKU: $sku',
-                          style: TextStyle(
-                            color: Colors.grey[600],
-                            fontSize: 12,
+                          const SizedBox(height: 16),
+                          const Text(
+                            'Image not available',
+                            style: TextStyle(
+                              fontSize: 18,
+                              fontWeight: FontWeight.bold,
+                            ),
                           ),
-                        ),
-                      ],
-                    ),
-                  ),
+                          const SizedBox(height: 8),
+                          Text(
+                            'SKU: $sku',
+                            style: TextStyle(
+                              color: Colors.grey[600],
+                              fontSize: 14,
+                            ),
+                          ),
+                        ],
+                      ),
+                    );
+                  },
                 ),
               ),
             ),
+
             // Close button
             Positioned(
               top: 40,
@@ -243,6 +239,7 @@ class ProductImageHelper {
                 ),
               ),
             ),
+
             // Title
             Positioned(
               top: 40,
@@ -267,68 +264,6 @@ class ProductImageHelper {
           ],
         ),
       ),
-    );
-  }
-}
-
-// Widget that tries multiple image paths until one works
-class _MultiPathImage extends StatelessWidget {
-  final List<String> paths;
-  final BoxFit fit;
-  final Widget errorWidget;
-
-  const _MultiPathImage({
-    required this.paths,
-    required this.fit,
-    required this.errorWidget,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return _ImageWithFallback(
-      paths: paths,
-      fit: fit,
-      errorWidget: errorWidget,
-      currentIndex: 0,
-    );
-  }
-}
-
-// Recursive widget to try each path
-class _ImageWithFallback extends StatelessWidget {
-  final List<String> paths;
-  final BoxFit fit;
-  final Widget errorWidget;
-  final int currentIndex;
-
-  const _ImageWithFallback({
-    required this.paths,
-    required this.fit,
-    required this.errorWidget,
-    required this.currentIndex,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    if (currentIndex >= paths.length) {
-      return errorWidget;
-    }
-
-    return Image.asset(
-      paths[currentIndex],
-      fit: fit,
-      errorBuilder: (context, error, stackTrace) {
-        // Try next path
-        if (currentIndex + 1 < paths.length) {
-          return _ImageWithFallback(
-            paths: paths,
-            fit: fit,
-            errorWidget: errorWidget,
-            currentIndex: currentIndex + 1,
-          );
-        }
-        return errorWidget;
-      },
     );
   }
 }
