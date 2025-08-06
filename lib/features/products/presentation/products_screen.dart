@@ -1,25 +1,21 @@
 // lib/features/products/presentation/products_screen.dart
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../../core/config/app_config.dart';
 import '../../../core/utils/product_image_helper.dart';
+import '../../../core/services/firestore_service.dart';
+import '../../auth/presentation/providers/auth_provider.dart';
 import '../../clients/presentation/screens/clients_screen.dart'
     show selectedClientProvider;
 
 // Products provider
 final productsProvider =
-    FutureProvider.family<List<Product>, String?>((ref, category) async {
-  final supabase = Supabase.instance.client;
+    StreamProvider.family<List<Product>, String?>((ref, category) {
+  final firestoreService = ref.watch(firestoreServiceProvider);
 
-  var query = supabase.from('products').select();
-
-  if (category != null && category.isNotEmpty) {
-    query = query.eq('category', category);
-  }
-
-  final response = await query.order('sku');
-  return (response as List).map((json) => Product.fromJson(json)).toList();
+  return firestoreService.getProducts(category: category).map((productsList) {
+    return productsList.map((json) => Product.fromJson(json)).toList();
+  });
 });
 
 // Search provider
@@ -28,14 +24,10 @@ final searchResultsProvider = FutureProvider<List<Product>>((ref) async {
   final query = ref.watch(searchQueryProvider);
   if (query.isEmpty) return [];
 
-  final supabase = Supabase.instance.client;
-  final response = await supabase
-      .from('products')
-      .select()
-      .or('sku.ilike.%$query%,product_type.ilike.%$query%,description.ilike.%$query%')
-      .limit(20);
+  final firestoreService = ref.watch(firestoreServiceProvider);
+  final results = await firestoreService.searchProducts(query);
 
-  return (response as List).map((json) => Product.fromJson(json)).toList();
+  return results.map((json) => Product.fromJson(json)).toList();
 });
 
 class ProductsScreen extends ConsumerStatefulWidget {
@@ -372,8 +364,7 @@ class _ProductsScreenState extends ConsumerState<ProductsScreen> {
 
   void _addToCart(Product product) async {
     try {
-      final supabase = Supabase.instance.client;
-      final user = supabase.auth.currentUser;
+      final user = ref.read(authStateProvider).valueOrNull;
 
       if (user == null) {
         if (mounted) {
@@ -402,30 +393,13 @@ class _ProductsScreenState extends ConsumerState<ProductsScreen> {
         return;
       }
 
-      // Check if item already in cart for this client
-      final existingItem = await supabase
-          .from('cart_items')
-          .select()
-          .eq('user_id', user.id)
-          .eq('client_id', selectedClient.id)
-          .eq('product_id', product.id)
-          .maybeSingle();
-
-      if (existingItem != null) {
-        // Update quantity
-        await supabase
-            .from('cart_items')
-            .update({'quantity': existingItem['quantity'] + 1}).eq(
-                'id', existingItem['id']);
-      } else {
-        // Add new item
-        await supabase.from('cart_items').insert({
-          'user_id': user.id,
-          'client_id': selectedClient.id,
-          'product_id': product.id,
-          'quantity': 1,
-        });
-      }
+      // Add to cart using Firestore service
+      final firestoreService = ref.read(firestoreServiceProvider);
+      await firestoreService.addToCart(
+        productId: product.id,
+        clientId: selectedClient.id,
+        quantity: 1,
+      );
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -485,8 +459,8 @@ class Product {
 
   factory Product.fromJson(Map<String, dynamic> json) {
     return Product(
-      id: json['id'],
-      sku: json['sku'],
+      id: json['id'] ?? '',
+      sku: json['sku'] ?? '',
       category: json['category'],
       productType: json['product_type'],
       description: json['description'],

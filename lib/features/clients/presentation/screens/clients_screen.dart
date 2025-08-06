@@ -1,20 +1,16 @@
 ﻿import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import '../../../../core/services/firestore_service.dart';
+import '../../../auth/presentation/providers/auth_provider.dart';
 
 // Clients provider
-final clientsProvider = FutureProvider<List<Client>>((ref) async {
-  final supabase = Supabase.instance.client;
-  final user = supabase.auth.currentUser;
-  if (user == null) return [];
+final clientsProvider = StreamProvider<List<Client>>((ref) {
+  final firestoreService = ref.watch(firestoreServiceProvider);
 
-  final response = await supabase
-      .from('clients')
-      .select()
-      .eq('user_id', user.id)
-      .order('company');
-
-  return (response as List).map((json) => Client.fromJson(json)).toList();
+  return firestoreService.getClients().map((clientsList) {
+    return clientsList.map((json) => Client.fromJson(json)).toList();
+  });
 });
 
 // Selected client provider
@@ -361,8 +357,7 @@ class _ClientsScreenState extends ConsumerState<ClientsScreen> {
     if (!_formKey.currentState!.validate()) return;
 
     try {
-      final supabase = Supabase.instance.client;
-      final user = supabase.auth.currentUser;
+      final user = ref.read(authStateProvider).valueOrNull;
 
       if (user == null) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -371,8 +366,9 @@ class _ClientsScreenState extends ConsumerState<ClientsScreen> {
         return;
       }
 
-      await supabase.from('clients').insert({
-        'user_id': user.id,
+      final firestoreService = ref.read(firestoreServiceProvider);
+
+      await firestoreService.addClient({
         'company': _companyController.text,
         'contact_name': _contactNameController.text.isEmpty
             ? null
@@ -495,8 +491,9 @@ class _ClientsScreenState extends ConsumerState<ClientsScreen> {
               if (!_formKey.currentState!.validate()) return;
 
               try {
-                final supabase = Supabase.instance.client;
-                await supabase.from('clients').update({
+                final firestoreService = ref.read(firestoreServiceProvider);
+
+                await firestoreService.updateClient(client.id, {
                   'company': _companyController.text,
                   'contact_name': _contactNameController.text.isEmpty
                       ? null
@@ -510,9 +507,8 @@ class _ClientsScreenState extends ConsumerState<ClientsScreen> {
                   'address': _addressController.text.isEmpty
                       ? null
                       : _addressController.text,
-                }).eq('id', client.id);
+                });
 
-                // Check mounted before using context
                 if (!context.mounted) return;
 
                 Navigator.pop(context);
@@ -562,16 +558,15 @@ class _ClientsScreenState extends ConsumerState<ClientsScreen> {
               Navigator.pop(context);
 
               try {
-                final supabase = Supabase.instance.client;
+                final firestoreService = ref.read(firestoreServiceProvider);
 
                 // Check if client has quotes
-                final quotesResponse = await supabase
-                    .from('quotes')
-                    .select('id')
-                    .eq('client_id', client.id)
-                    .limit(1);
+                final quotesCount = await firestoreService.getCount(
+                  'quotes',
+                  where: {'client_id': client.id},
+                );
 
-                if ((quotesResponse as List).isNotEmpty) {
+                if (quotesCount > 0) {
                   if (!context.mounted) return;
 
                   ScaffoldMessenger.of(context).showSnackBar(
@@ -585,7 +580,7 @@ class _ClientsScreenState extends ConsumerState<ClientsScreen> {
                 }
 
                 // Delete client
-                await supabase.from('clients').delete().eq('id', client.id);
+                await firestoreService.deleteClient(client.id);
 
                 if (!context.mounted) return;
 
@@ -643,15 +638,25 @@ class Client {
   });
 
   factory Client.fromJson(Map<String, dynamic> json) {
+    // Handle Firestore Timestamp
+    DateTime createdAt;
+    if (json['created_at'] is Timestamp) {
+      createdAt = (json['created_at'] as Timestamp).toDate();
+    } else if (json['created_at'] is String) {
+      createdAt = DateTime.parse(json['created_at']);
+    } else {
+      createdAt = DateTime.now();
+    }
+
     return Client(
-      id: json['id'],
-      userId: json['user_id'],
-      company: json['company'],
+      id: json['id'] ?? '',
+      userId: json['user_id'] ?? '',
+      company: json['company'] ?? '',
       contactName: json['contact_name'],
       contactEmail: json['contact_email'],
       phone: json['contact_number'],
       address: json['address'],
-      createdAt: DateTime.parse(json['created_at']),
+      createdAt: createdAt,
     );
   }
 }

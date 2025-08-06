@@ -1,5 +1,5 @@
 import 'package:go_router/go_router.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import '../../features/auth/presentation/screens/login_screen.dart';
 import '../../features/auth/presentation/screens/splash_screen.dart';
 import '../../features/home/home_screen.dart';
@@ -8,14 +8,16 @@ class AppRouter {
   static final GoRouter router = GoRouter(
     initialLocation: '/',
     redirect: (context, state) {
-      final session = Supabase.instance.client.auth.currentSession;
+      final user = FirebaseAuth.instance.currentUser;
       final isLoggingIn = state.matchedLocation == '/login';
 
-      if (session == null && !isLoggingIn) {
+      // If not logged in and not on login page, redirect to login
+      if (user == null && !isLoggingIn) {
         return '/login';
       }
 
-      if (session != null && isLoggingIn) {
+      // If logged in and on login page, redirect to home
+      if (user != null && isLoggingIn) {
         return '/';
       }
 

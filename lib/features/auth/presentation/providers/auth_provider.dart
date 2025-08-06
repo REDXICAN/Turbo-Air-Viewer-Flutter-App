@@ -1,143 +1,165 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import '../../../../core/services/firebase_auth_service.dart';
+import '../../../../core/services/firestore_service.dart';
 import '../../../../core/models/models.dart';
 
-final supabaseProvider = Provider<SupabaseClient>((ref) {
-  return Supabase.instance.client;
+// Firebase Auth Service Provider
+final firebaseAuthServiceProvider = Provider<FirebaseAuthService>((ref) {
+  return FirebaseAuthService();
 });
 
+// Firestore Service Provider
+final firestoreServiceProvider = Provider<FirestoreService>((ref) {
+  return FirestoreService();
+});
+
+// Auth State Provider
 final authStateProvider = StreamProvider<User?>((ref) {
-  final supabase = ref.watch(supabaseProvider);
-  return supabase.auth.onAuthStateChange.map((event) => event.session?.user);
+  final authService = ref.watch(firebaseAuthServiceProvider);
+  return authService.authStateChanges;
 });
 
+// Current User Profile Provider
 final currentUserProvider = FutureProvider<UserProfile?>((ref) async {
   final user = ref.watch(authStateProvider).valueOrNull;
   if (user == null) return null;
 
-  final supabase = ref.watch(supabaseProvider);
-  final response =
-      await supabase.from('user_profiles').select().eq('id', user.id).single();
+  final authService = ref.watch(firebaseAuthServiceProvider);
+  final profileData = await authService.getUserProfile(user.uid);
 
-  return UserProfile.fromJson(response);
+  if (profileData == null) return null;
+
+  return UserProfile.fromJson(profileData);
 });
 
+// Cart Item Count Provider
 final cartItemCountProvider = StreamProvider<int>((ref) {
   final user = ref.watch(authStateProvider).valueOrNull;
   if (user == null) return Stream.value(0);
 
-  final supabase = ref.watch(supabaseProvider);
-  return supabase
-      .from('cart_items')
-      .stream(primaryKey: ['id'])
-      .eq('user_id', user.id)
-      .map((data) => data.length);
+  final firestoreService = ref.watch(firestoreServiceProvider);
+
+  return FirebaseFirestore.instance
+      .collection('cart_items')
+      .where('user_id', isEqualTo: user.uid)
+      .snapshots()
+      .map((snapshot) => snapshot.docs.length);
 });
 
+// Total Clients Provider
 final totalClientsProvider = FutureProvider<int>((ref) async {
   final user = ref.watch(authStateProvider).valueOrNull;
   if (user == null) return 0;
 
-  final supabase = ref.watch(supabaseProvider);
-  final response =
-      await supabase.from('clients').select('id').eq('user_id', user.id);
-
-  return (response as List).length;
+  final firestoreService = ref.watch(firestoreServiceProvider);
+  return await firestoreService
+      .getCount('clients', where: {'user_id': user.uid});
 });
 
+// Total Quotes Provider
 final totalQuotesProvider = FutureProvider<int>((ref) async {
   final user = ref.watch(authStateProvider).valueOrNull;
   if (user == null) return 0;
 
-  final supabase = ref.watch(supabaseProvider);
-  final response =
-      await supabase.from('quotes').select('id').eq('user_id', user.id);
-
-  return (response as List).length;
+  final firestoreService = ref.watch(firestoreServiceProvider);
+  return await firestoreService
+      .getCount('quotes', where: {'user_id': user.uid});
 });
 
+// Total Products Provider
 final totalProductsProvider = FutureProvider<int>((ref) async {
-  final supabase = ref.watch(supabaseProvider);
-  final response = await supabase.from('products').select('id');
-
-  return (response as List).length;
+  final firestoreService = ref.watch(firestoreServiceProvider);
+  return await firestoreService.getCount('products');
 });
 
-final recentQuotesProvider = FutureProvider<List<Quote>>((ref) async {
+// Recent Quotes Provider
+final recentQuotesProvider = StreamProvider<List<Quote>>((ref) {
   final user = ref.watch(authStateProvider).valueOrNull;
-  if (user == null) return [];
+  if (user == null) return Stream.value([]);
 
-  final supabase = ref.watch(supabaseProvider);
-  final response = await supabase
-      .from('quotes')
-      .select('*, quote_items(*)')
-      .eq('user_id', user.id)
-      .order('created_at', ascending: false)
-      .limit(5);
+  return FirebaseFirestore.instance
+      .collection('quotes')
+      .where('user_id', isEqualTo: user.uid)
+      .orderBy('created_at', descending: true)
+      .limit(5)
+      .snapshots()
+      .asyncMap((snapshot) async {
+    final quotes = <Quote>[];
 
-  return (response as List).map((json) => Quote.fromJson(json)).toList();
+    for (var doc in snapshot.docs) {
+      final data = doc.data();
+      data['id'] = doc.id;
+
+      // Fetch client details
+      if (data['client_id'] != null) {
+        final clientDoc = await FirebaseFirestore.instance
+            .collection('clients')
+            .doc(data['client_id'])
+            .get();
+        if (clientDoc.exists) {
+          data['clients'] = clientDoc.data();
+        }
+      }
+
+      // Fetch quote items
+      final itemsSnapshot = await FirebaseFirestore.instance
+          .collection('quote_items')
+          .where('quote_id', isEqualTo: doc.id)
+          .get();
+
+      data['quote_items'] = itemsSnapshot.docs.map((itemDoc) {
+        final itemData = itemDoc.data();
+        itemData['id'] = itemDoc.id;
+        return itemData;
+      }).toList();
+
+      quotes.add(Quote.fromJson(data));
+    }
+
+    return quotes;
+  });
 });
 
+// Recent Searches Provider
 final recentSearchesProvider = FutureProvider<List<String>>((ref) async {
   final user = ref.watch(authStateProvider).valueOrNull;
   if (user == null) return [];
 
-  final supabase = ref.watch(supabaseProvider);
-  final response = await supabase
-      .from('search_history')
-      .select('search_term')
-      .eq('user_id', user.id)
-      .order('created_at', ascending: false)
-      .limit(10);
+  final snapshot = await FirebaseFirestore.instance
+      .collection('search_history')
+      .where('user_id', isEqualTo: user.uid)
+      .orderBy('created_at', descending: true)
+      .limit(10)
+      .get();
 
-  return (response as List)
-      .map((item) => item['search_term'] as String)
+  return snapshot.docs
+      .map((doc) => doc.data()['search_term'] as String)
       .toList();
 });
 
-class AuthService {
-  final SupabaseClient _supabase;
+// Add Search to History
+Future<void> addSearchToHistory(String userId, String searchTerm) async {
+  await FirebaseFirestore.instance.collection('search_history').add({
+    'user_id': userId,
+    'search_term': searchTerm,
+    'created_at': FieldValue.serverTimestamp(),
+  });
 
-  AuthService(this._supabase);
+  // Clean old searches (keep only last 50)
+  final oldSearches = await FirebaseFirestore.instance
+      .collection('search_history')
+      .where('user_id', isEqualTo: userId)
+      .orderBy('created_at', descending: true)
+      .limit(100)
+      .get();
 
-  Future<AuthResponse> signUp({
-    required String email,
-    required String password,
-    String? company,
-  }) async {
-    final response = await _supabase.auth.signUp(
-      email: email,
-      password: password,
-      data: {'company': company},
-    );
-
-    if (response.user != null) {
-      // Profile will be created automatically by database trigger
+  if (oldSearches.docs.length > 50) {
+    final batch = FirebaseFirestore.instance.batch();
+    for (int i = 50; i < oldSearches.docs.length; i++) {
+      batch.delete(oldSearches.docs[i].reference);
     }
-
-    return response;
-  }
-
-  Future<AuthResponse> signIn({
-    required String email,
-    required String password,
-  }) async {
-    return await _supabase.auth.signInWithPassword(
-      email: email,
-      password: password,
-    );
-  }
-
-  Future<void> signOut() async {
-    await _supabase.auth.signOut();
-  }
-
-  Future<void> resetPassword(String email) async {
-    await _supabase.auth.resetPasswordForEmail(email);
+    await batch.commit();
   }
 }
-
-final authServiceProvider = Provider<AuthService>((ref) {
-  final supabase = ref.watch(supabaseProvider);
-  return AuthService(supabase);
-});
