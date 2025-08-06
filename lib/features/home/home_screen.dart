@@ -1,13 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_adaptive_scaffold/flutter_adaptive_scaffold.dart';
-import 'features/products/presentation/screens/products_screen.dart';
-import 'features/cart/presentation/screens/cart_screen.dart';
-import 'features/clients/presentation/screens/clients_screen.dart';
-import 'features/quotes/presentation/screens/quotes_screen.dart';
-import 'features/profile/presentation/screens/profile_screen.dart';
-import 'features/auth/presentation/providers/auth_provider.dart';
-import 'core/widgets/sync_indicator.dart';
+import '../products/presentation/screens/products_screen.dart';
+import '../cart/presentation/screens/cart_screen.dart';
+import '../clients/presentation/screens/clients_screen.dart';
+import '../quotes/presentation/screens/quotes_screen.dart';
+import '../profile/presentation/screens/profile_screen.dart';
+import '../auth/presentation/providers/auth_provider.dart';
+import '../../core/widgets/sync_indicator.dart';
 
 class HomeScreen extends ConsumerStatefulWidget {
   const HomeScreen({super.key});
@@ -60,10 +60,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final authState = ref.watch(authStateProvider);
-    final user = authState.valueOrNull;
-    final cartItemCount = ref.watch(cartItemCountProvider);
-    
+    final cartItemCountAsync = ref.watch(cartItemCountProvider);
+    final cartItemCount = cartItemCountAsync.valueOrNull ?? 0;
+
     // Update cart badge
     final destinations = List<NavigationDestination>.from(_destinations);
     destinations[3] = NavigationDestination(
@@ -142,10 +141,15 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   }
 
   Widget _buildHomeContent() {
-    final user = ref.watch(currentUserProvider);
+    final userAsync = ref.watch(currentUserProvider);
+    final user = userAsync.valueOrNull;
     final recentQuotes = ref.watch(recentQuotesProvider);
-    final recentSearches = ref.watch(recentSearchesProvider);
-    
+
+    final totalClientsAsync = ref.watch(totalClientsProvider);
+    final totalQuotesAsync = ref.watch(totalQuotesProvider);
+    final cartItemCountAsync = ref.watch(cartItemCountProvider);
+    final totalProductsAsync = ref.watch(totalProductsProvider);
+
     return CustomScrollView(
       slivers: [
         SliverAppBar(
@@ -181,28 +185,44 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
               _buildStatCard(
                 context,
                 'Total Clients',
-                ref.watch(totalClientsProvider).toString(),
+                totalClientsAsync.when(
+                  data: (value) => value.toString(),
+                  loading: () => '...',
+                  error: (_, __) => '0',
+                ),
                 Icons.people,
                 Colors.blue,
               ),
               _buildStatCard(
                 context,
                 'Total Quotes',
-                ref.watch(totalQuotesProvider).toString(),
+                totalQuotesAsync.when(
+                  data: (value) => value.toString(),
+                  loading: () => '...',
+                  error: (_, __) => '0',
+                ),
                 Icons.receipt,
                 Colors.green,
               ),
               _buildStatCard(
                 context,
                 'Cart Items',
-                ref.watch(cartItemCountProvider).toString(),
+                cartItemCountAsync.when(
+                  data: (value) => value.toString(),
+                  loading: () => '...',
+                  error: (_, __) => '0',
+                ),
                 Icons.shopping_cart,
                 Colors.orange,
               ),
               _buildStatCard(
                 context,
                 'Products',
-                ref.watch(totalProductsProvider).toString(),
+                totalProductsAsync.when(
+                  data: (value) => value.toString(),
+                  loading: () => '...',
+                  error: (_, __) => '0',
+                ),
                 Icons.inventory,
                 Colors.purple,
               ),
@@ -222,19 +242,20 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                   ),
                   const SizedBox(height: 8),
                   ...recentQuotes.value!.take(5).map((quote) => Card(
-                    child: ListTile(
-                      leading: const Icon(Icons.receipt),
-                      title: Text(quote.quoteNumber),
-                      subtitle: Text('\$${quote.totalAmount.toStringAsFixed(2)}'),
-                      trailing: Text(
-                        _formatDate(quote.createdAt),
-                        style: Theme.of(context).textTheme.bodySmall,
-                      ),
-                      onTap: () {
-                        // Navigate to quote details
-                      },
-                    ),
-                  )),
+                        child: ListTile(
+                          leading: const Icon(Icons.receipt),
+                          title: Text(quote.quoteNumber),
+                          subtitle:
+                              Text('\$${quote.totalAmount.toStringAsFixed(2)}'),
+                          trailing: Text(
+                            _formatDate(quote.createdAt),
+                            style: Theme.of(context).textTheme.bodySmall,
+                          ),
+                          onTap: () {
+                            // Navigate to quote details
+                          },
+                        ),
+                      )),
                 ],
               ),
             ),
@@ -280,9 +301,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
               Text(
                 value,
                 style: Theme.of(context).textTheme.headlineMedium?.copyWith(
-                  fontWeight: FontWeight.bold,
-                  color: color,
-                ),
+                      fontWeight: FontWeight.bold,
+                      color: color,
+                    ),
               ),
               Text(
                 title,
@@ -299,7 +320,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   String _formatDate(DateTime date) {
     final now = DateTime.now();
     final difference = now.difference(date);
-    
+
     if (difference.inDays == 0) {
       if (difference.inHours == 0) {
         return '${difference.inMinutes} min ago';
