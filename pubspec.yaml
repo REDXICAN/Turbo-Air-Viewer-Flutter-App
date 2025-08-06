@@ -42,6 +42,21 @@ dependencies:
   cached_network_image: ^3.3.0
   shimmer: ^3.0.0
   
+  # Firebase (replacing Supabase)
+  firebase_core: ^2.24.2
+  firebase_auth: ^4.16.0
+  cloud_firestore: ^4.14.0
+  cloud_functions: ^4.6.0
+  firebase_storage: ^11.6.0
+  firebase_analytics: ^10.8.0
+  firebase_crashlytics: ^3.4.9
+  firebase_performance: ^0.9.3+9
+  firebase_messaging: ^14.7.10
+  firebase_remote_config: ^4.3.8
+  
+  # Optional: For direct email service integration
+  http: ^1.1.0
+
   # PDF Generation
   pdf: ^3.10.0
   printing: ^5.11.0
