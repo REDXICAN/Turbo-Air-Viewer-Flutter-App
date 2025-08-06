@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_adaptive_scaffold/flutter_adaptive_scaffold.dart';
-import '../products/presentation/screens/products_screen.dart';
+import '../products/presentation/products_screen.dart'; // Fixed path
 import '../cart/presentation/screens/cart_screen.dart';
 import '../clients/presentation/screens/clients_screen.dart';
 import '../quotes/presentation/screens/quotes_screen.dart';
@@ -252,7 +252,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                             style: Theme.of(context).textTheme.bodySmall,
                           ),
                           onTap: () {
-                            setState(() => _selectedIndex = 4);
+                            // Navigate to quote details
                           },
                         ),
                       )),
@@ -275,6 +275,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
       elevation: 2,
       child: InkWell(
         onTap: () {
+          // Navigate to relevant screen
           switch (title) {
             case 'Total Clients':
               setState(() => _selectedIndex = 2);

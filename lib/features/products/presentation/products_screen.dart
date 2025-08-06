@@ -1,7 +1,9 @@
+// lib/features/products/presentation/products_screen.dart
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
-import '../../../../core/config/app_config.dart';
+import 'package:cached_network_image/cached_network_image.dart';
+import '../../../core/config/app_config.dart';
 
 // Products provider
 final productsProvider =
@@ -309,9 +311,8 @@ class _ProductsScreenState extends ConsumerState<ProductsScreen> {
   }
 
   Widget _buildSpecRow(String label, String? value) {
-    if (value == null || value.isEmpty || value == '-') {
+    if (value == null || value.isEmpty || value == '-')
       return const SizedBox.shrink();
-    }
 
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 4),
@@ -331,14 +332,86 @@ class _ProductsScreenState extends ConsumerState<ProductsScreen> {
     );
   }
 
-  void _addToCart(Product product) {
-    // TODO: Implement add to cart functionality
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text('${product.sku} added to cart'),
-        backgroundColor: Colors.green,
-      ),
-    );
+  void _addToCart(Product product) async {
+    try {
+      final supabase = Supabase.instance.client;
+      final user = supabase.auth.currentUser;
+
+      if (user == null) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Please sign in to add items to cart'),
+            backgroundColor: Colors.orange,
+          ),
+        );
+        return;
+      }
+
+      // Import selectedClientProvider from clients_screen.dart
+      final clientsModule = await import(
+          '../../../clients/presentation/screens/clients_screen.dart');
+      final selectedClient = ref.read(clientsModule.selectedClientProvider);
+
+      if (selectedClient == null) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Please select a client first'),
+            backgroundColor: Colors.orange,
+          ),
+        );
+        return;
+      }
+
+      // Check if item already in cart for this client
+      final existingItem = await supabase
+          .from('cart_items')
+          .select()
+          .eq('user_id', user.id)
+          .eq('client_id', selectedClient.id)
+          .eq('product_id', product.id)
+          .maybeSingle();
+
+      if (existingItem != null) {
+        // Update quantity
+        await supabase
+            .from('cart_items')
+            .update({'quantity': existingItem['quantity'] + 1}).eq(
+                'id', existingItem['id']);
+      } else {
+        // Add new item
+        await supabase.from('cart_items').insert({
+          'user_id': user.id,
+          'client_id': selectedClient.id,
+          'product_id': product.id,
+          'quantity': 1,
+        });
+      }
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('${product.sku} added to cart'),
+            backgroundColor: Colors.green,
+            action: SnackBarAction(
+              label: 'View Cart',
+              textColor: Colors.white,
+              onPressed: () {
+                // Navigate to cart screen
+              },
+            ),
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error adding to cart: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
   }
 }
 

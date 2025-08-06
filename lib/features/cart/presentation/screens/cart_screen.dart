@@ -1,28 +1,36 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
-import '../../clients/presentation/screens/clients_screen.dart'
-    show Client, selectedClientProvider;
+import 'package:uuid/uuid.dart';
+import 'package:pdf/pdf.dart';
+import 'package:pdf/widgets.dart' as pw;
+import 'package:printing/printing.dart';
+import 'package:excel/excel.dart' as excel_pkg;
+import 'package:share_plus/share_plus.dart';
+import 'dart:io';
+import 'package:path_provider/path_provider.dart';
+import 'dart:typed_data';
+import '../../../clients/presentation/screens/clients_screen.dart'
+    show selectedClientProvider, clientsProvider;
+import '../../../../core/services/email_service.dart';
+import '../../../../core/services/export_service.dart';
 
 // Cart provider
 final cartProvider = FutureProvider<List<CartItem>>((ref) async {
   final supabase = Supabase.instance.client;
   final user = supabase.auth.currentUser;
-  final selectedClient = ref.watch(selectedClientProvider);
-
-  if (user == null || selectedClient == null) return [];
+  if (user == null) return [];
 
   final response = await supabase
       .from('cart_items')
       .select('*, products(*)')
-      .eq('user_id', user.id)
-      .eq('client_id', selectedClient.id);
+      .eq('user_id', user.id);
 
   return (response as List).map((json) => CartItem.fromJson(json)).toList();
 });
 
-// Tax rate provider
-final taxRateProvider = StateProvider<double>((ref) => 8.0);
+// Selected client for cart
+final cartClientProvider = StateProvider<Client?>((ref) => null);
 
 class CartScreen extends ConsumerStatefulWidget {
   const CartScreen({super.key});
@@ -32,54 +40,33 @@ class CartScreen extends ConsumerStatefulWidget {
 }
 
 class _CartScreenState extends ConsumerState<CartScreen> {
+  final _taxRateController = TextEditingController(text: '8.0');
+  bool _isCreatingQuote = false;
+
+  @override
+  void dispose() {
+    _taxRateController.dispose();
+    super.dispose();
+  }
+
   @override
   Widget build(BuildContext context) {
     final cartAsync = ref.watch(cartProvider);
-    final selectedClient = ref.watch(selectedClientProvider);
-    final taxRate = ref.watch(taxRateProvider);
-
-    if (selectedClient == null) {
-      return Scaffold(
-        appBar: AppBar(
-          title: const Text('Shopping Cart'),
-          backgroundColor: const Color(0xFF20429C),
-          foregroundColor: Colors.white,
-        ),
-        body: Center(
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Icon(Icons.warning_amber, size: 80, color: Colors.orange[400]),
-              const SizedBox(height: 16),
-              const Text(
-                'No client selected',
-                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-              ),
-              const SizedBox(height: 8),
-              const Text('Please select a client from the Clients tab first'),
-              const SizedBox(height: 24),
-              ElevatedButton(
-                onPressed: () {
-                  // Navigate to clients tab
-                },
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFF20429C),
-                  foregroundColor: Colors.white,
-                ),
-                child: const Text('Go to Clients'),
-              ),
-            ],
-          ),
-        ),
-      );
-    }
+    final selectedClient = ref.watch(cartClientProvider);
 
     return Scaffold(
       backgroundColor: Colors.grey[50],
       appBar: AppBar(
-        title: const Text('Shopping Cart'),
+        title: const Text('Cart'),
         backgroundColor: const Color(0xFF20429C),
         foregroundColor: Colors.white,
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.delete_sweep),
+            onPressed: _clearCart,
+            tooltip: 'Clear Cart',
+          ),
+        ],
       ),
       body: cartAsync.when(
         data: (cartItems) {
@@ -91,45 +78,69 @@ class _CartScreenState extends ConsumerState<CartScreen> {
                   Icon(Icons.shopping_cart_outlined,
                       size: 80, color: Colors.grey[400]),
                   const SizedBox(height: 16),
-                  const Text(
-                    'Cart is Empty',
-                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                  Text(
+                    'Your cart is empty',
+                    style: TextStyle(fontSize: 18, color: Colors.grey[600]),
                   ),
                   const SizedBox(height: 8),
-                  const Text(
-                      'Add products from the Products tab to create a quote'),
+                  const Text('Add products to get started'),
                 ],
               ),
             );
           }
 
-          // Calculate totals
-          double subtotal = 0;
-          for (var item in cartItems) {
-            subtotal += (item.product?.price ?? 0) * item.quantity;
-          }
-          double taxAmount = subtotal * (taxRate / 100);
-          double total = subtotal + taxAmount;
+          final subtotal = _calculateSubtotal(cartItems);
+          final taxRate = double.tryParse(_taxRateController.text) ?? 0;
+          final taxAmount = subtotal * (taxRate / 100);
+          final total = subtotal + taxAmount;
 
           return Column(
             children: [
-              // Client info bar
+              // Client selector
               Container(
-                color: Colors.blue[50],
-                padding: const EdgeInsets.all(12),
-                child: Row(
+                padding: const EdgeInsets.all(16),
+                color: Colors.white,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Icon(Icons.business, size: 20),
-                    const SizedBox(width: 8),
-                    Text(
-                      'Client: ${selectedClient.company}',
-                      style: const TextStyle(fontWeight: FontWeight.w500),
+                    const Text(
+                      'Select Client',
+                      style:
+                          TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
                     ),
+                    const SizedBox(height: 8),
+                    if (selectedClient != null)
+                      Card(
+                        color: Colors.green[50],
+                        child: ListTile(
+                          leading: const Icon(Icons.check_circle,
+                              color: Colors.green),
+                          title: Text(selectedClient.company),
+                          subtitle: selectedClient.contactName != null
+                              ? Text(selectedClient.contactName!)
+                              : null,
+                          trailing: TextButton(
+                            onPressed: () => ref
+                                .read(cartClientProvider.notifier)
+                                .state = null,
+                            child: const Text('Change'),
+                          ),
+                        ),
+                      )
+                    else
+                      OutlinedButton.icon(
+                        onPressed: _selectClient,
+                        icon: const Icon(Icons.person_add),
+                        label: const Text('Select Client'),
+                        style: OutlinedButton.styleFrom(
+                          minimumSize: const Size(double.infinity, 48),
+                        ),
+                      ),
                   ],
                 ),
               ),
 
-              // Cart items list
+              // Cart items
               Expanded(
                 child: ListView.builder(
                   padding: const EdgeInsets.all(16),
@@ -141,16 +152,17 @@ class _CartScreenState extends ConsumerState<CartScreen> {
                 ),
               ),
 
-              // Summary section
+              // Summary
               Container(
                 padding: const EdgeInsets.all(16),
                 decoration: BoxDecoration(
                   color: Colors.white,
                   boxShadow: [
                     BoxShadow(
-                      color: Colors.black.withOpacity(0.05),
-                      blurRadius: 10,
-                      offset: const Offset(0, -5),
+                      color: Colors.grey.withOpacity(0.2),
+                      spreadRadius: 1,
+                      blurRadius: 5,
+                      offset: const Offset(0, -3),
                     ),
                   ],
                 ),
@@ -162,21 +174,18 @@ class _CartScreenState extends ConsumerState<CartScreen> {
                         const Text('Tax Rate (%):'),
                         const SizedBox(width: 16),
                         SizedBox(
-                          width: 100,
-                          child: TextFormField(
-                            initialValue: taxRate.toString(),
+                          width: 80,
+                          child: TextField(
+                            controller: _taxRateController,
                             keyboardType: TextInputType.number,
+                            textAlign: TextAlign.center,
                             decoration: const InputDecoration(
                               isDense: true,
                               contentPadding: EdgeInsets.symmetric(
                                   horizontal: 8, vertical: 8),
                               border: OutlineInputBorder(),
                             ),
-                            onChanged: (value) {
-                              final newRate = double.tryParse(value) ?? 8.0;
-                              ref.read(taxRateProvider.notifier).state =
-                                  newRate;
-                            },
+                            onChanged: (value) => setState(() {}),
                           ),
                         ),
                       ],
@@ -185,65 +194,38 @@ class _CartScreenState extends ConsumerState<CartScreen> {
 
                     // Totals
                     _buildSummaryRow('Subtotal', subtotal),
-                    _buildSummaryRow(
-                        'Tax (${taxRate.toStringAsFixed(1)}%)', taxAmount),
-                    const Divider(thickness: 2),
-                    _buildSummaryRow('Total', total, isTotal: true),
+                    _buildSummaryRow('Tax ($taxRate%)', taxAmount),
+                    const Divider(),
+                    _buildSummaryRow('Total', total, isBold: true),
 
                     const SizedBox(height: 16),
 
-                    // Export buttons
+                    // Action buttons
                     Row(
                       children: [
                         Expanded(
                           child: ElevatedButton.icon(
-                            onPressed: () => _emailQuote(
-                                cartItems, subtotal, taxAmount, total),
-                            icon: const Icon(Icons.email),
-                            label: const Text('Email Quote'),
+                            onPressed: selectedClient != null &&
+                                    !_isCreatingQuote
+                                ? () => _createQuote(cartItems, selectedClient)
+                                : null,
+                            icon: _isCreatingQuote
+                                ? const SizedBox(
+                                    width: 16,
+                                    height: 16,
+                                    child: CircularProgressIndicator(
+                                      strokeWidth: 2,
+                                      valueColor: AlwaysStoppedAnimation<Color>(
+                                          Colors.white),
+                                    ),
+                                  )
+                                : const Icon(Icons.receipt),
+                            label: Text(_isCreatingQuote
+                                ? 'Creating...'
+                                : 'Create Quote'),
                             style: ElevatedButton.styleFrom(
                               backgroundColor: const Color(0xFF20429C),
                               foregroundColor: Colors.white,
-                              padding: const EdgeInsets.symmetric(vertical: 12),
-                            ),
-                          ),
-                        ),
-                        const SizedBox(width: 8),
-                        Expanded(
-                          child: OutlinedButton.icon(
-                            onPressed: () => _exportPDF(
-                                cartItems, subtotal, taxAmount, total),
-                            icon: const Icon(Icons.picture_as_pdf),
-                            label: const Text('Export PDF'),
-                            style: OutlinedButton.styleFrom(
-                              padding: const EdgeInsets.symmetric(vertical: 12),
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 8),
-                    Row(
-                      children: [
-                        Expanded(
-                          child: OutlinedButton.icon(
-                            onPressed: () => _exportExcel(
-                                cartItems, subtotal, taxAmount, total),
-                            icon: const Icon(Icons.table_chart),
-                            label: const Text('Export Excel'),
-                            style: OutlinedButton.styleFrom(
-                              padding: const EdgeInsets.symmetric(vertical: 12),
-                            ),
-                          ),
-                        ),
-                        const SizedBox(width: 8),
-                        Expanded(
-                          child: TextButton.icon(
-                            onPressed: _clearCart,
-                            icon: const Icon(Icons.clear, color: Colors.red),
-                            label: const Text('Clear Cart',
-                                style: TextStyle(color: Colors.red)),
-                            style: TextButton.styleFrom(
                               padding: const EdgeInsets.symmetric(vertical: 12),
                             ),
                           ),
@@ -263,16 +245,13 @@ class _CartScreenState extends ConsumerState<CartScreen> {
   }
 
   Widget _buildCartItem(CartItem item) {
-    final product = item.product;
-    if (product == null) return const SizedBox.shrink();
-
     return Card(
       margin: const EdgeInsets.only(bottom: 12),
       child: Padding(
         padding: const EdgeInsets.all(12),
         child: Row(
           children: [
-            // Product image
+            // Product image placeholder
             Container(
               width: 60,
               height: 60,
@@ -284,27 +263,25 @@ class _CartScreenState extends ConsumerState<CartScreen> {
             ),
             const SizedBox(width: 12),
 
-            // Product info
+            // Product details
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    product.sku,
+                    item.product?.sku ?? 'Unknown',
                     style: const TextStyle(fontWeight: FontWeight.bold),
                   ),
-                  if (product.productType != null)
+                  if (item.product?.productType != null)
                     Text(
-                      product.productType!,
+                      item.product!.productType!,
                       style: TextStyle(color: Colors.grey[600], fontSize: 12),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
                     ),
                   Text(
-                    '\$${product.price?.toStringAsFixed(2) ?? '0.00'}',
+                    '\$${(item.product?.price ?? 0).toStringAsFixed(2)}',
                     style: const TextStyle(
                       color: Color(0xFF20429C),
-                      fontWeight: FontWeight.w500,
+                      fontWeight: FontWeight.bold,
                     ),
                   ),
                 ],
@@ -312,52 +289,31 @@ class _CartScreenState extends ConsumerState<CartScreen> {
             ),
 
             // Quantity controls
-            Container(
-              decoration: BoxDecoration(
-                border: Border.all(color: Colors.grey[300]!),
-                borderRadius: BorderRadius.circular(8),
-              ),
-              child: Row(
-                children: [
-                  IconButton(
-                    icon: const Icon(Icons.remove, size: 20),
-                    onPressed: () => _updateQuantity(item, item.quantity - 1),
-                    constraints:
-                        const BoxConstraints(minWidth: 36, minHeight: 36),
-                  ),
-                  Container(
-                    constraints: const BoxConstraints(minWidth: 40),
-                    alignment: Alignment.center,
-                    child: Text(
-                      '${item.quantity}',
-                      style: const TextStyle(fontWeight: FontWeight.bold),
-                    ),
-                  ),
-                  IconButton(
-                    icon: const Icon(Icons.add, size: 20),
-                    onPressed: () => _updateQuantity(item, item.quantity + 1),
-                    constraints:
-                        const BoxConstraints(minWidth: 36, minHeight: 36),
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(width: 8),
-
-            // Total price
-            SizedBox(
-              width: 80,
-              child: Text(
-                '\$${((product.price ?? 0) * item.quantity).toStringAsFixed(2)}',
-                style: const TextStyle(fontWeight: FontWeight.bold),
-                textAlign: TextAlign.right,
-              ),
+            Row(
+              children: [
+                IconButton(
+                  onPressed: () => _updateQuantity(item, item.quantity - 1),
+                  icon: const Icon(Icons.remove_circle_outline),
+                  color: Colors.red,
+                ),
+                Text(
+                  '${item.quantity}',
+                  style: const TextStyle(
+                      fontSize: 16, fontWeight: FontWeight.bold),
+                ),
+                IconButton(
+                  onPressed: () => _updateQuantity(item, item.quantity + 1),
+                  icon: const Icon(Icons.add_circle_outline),
+                  color: Colors.green,
+                ),
+              ],
             ),
 
             // Remove button
             IconButton(
-              icon: const Icon(Icons.delete_outline, color: Colors.red),
-              onPressed: () => _removeItem(item),
+              onPressed: () => _removeFromCart(item),
+              icon: const Icon(Icons.delete_outline),
+              color: Colors.red,
             ),
           ],
         ),
@@ -365,7 +321,7 @@ class _CartScreenState extends ConsumerState<CartScreen> {
     );
   }
 
-  Widget _buildSummaryRow(String label, double amount, {bool isTotal = false}) {
+  Widget _buildSummaryRow(String label, double value, {bool isBold = false}) {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 4),
       child: Row(
@@ -374,16 +330,16 @@ class _CartScreenState extends ConsumerState<CartScreen> {
           Text(
             label,
             style: TextStyle(
-              fontSize: isTotal ? 18 : 14,
-              fontWeight: isTotal ? FontWeight.bold : FontWeight.normal,
+              fontWeight: isBold ? FontWeight.bold : FontWeight.normal,
+              fontSize: isBold ? 16 : 14,
             ),
           ),
           Text(
-            '\$${amount.toStringAsFixed(2)}',
+            '\$${value.toStringAsFixed(2)}',
             style: TextStyle(
-              fontSize: isTotal ? 18 : 14,
-              fontWeight: isTotal ? FontWeight.bold : FontWeight.w500,
-              color: isTotal ? const Color(0xFF20429C) : null,
+              fontWeight: isBold ? FontWeight.bold : FontWeight.normal,
+              fontSize: isBold ? 18 : 14,
+              color: isBold ? const Color(0xFF20429C) : null,
             ),
           ),
         ],
@@ -391,9 +347,27 @@ class _CartScreenState extends ConsumerState<CartScreen> {
     );
   }
 
+  double _calculateSubtotal(List<CartItem> items) {
+    return items.fold(
+        0, (sum, item) => sum + (item.product?.price ?? 0) * item.quantity);
+  }
+
+  void _selectClient() {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => const ClientSelectorScreen(),
+      ),
+    ).then((client) {
+      if (client != null) {
+        ref.read(cartClientProvider.notifier).state = client;
+      }
+    });
+  }
+
   Future<void> _updateQuantity(CartItem item, int newQuantity) async {
     if (newQuantity <= 0) {
-      _removeItem(item);
+      _removeFromCart(item);
       return;
     }
 
@@ -413,7 +387,7 @@ class _CartScreenState extends ConsumerState<CartScreen> {
     }
   }
 
-  Future<void> _removeItem(CartItem item) async {
+  Future<void> _removeFromCart(CartItem item) async {
     try {
       final supabase = Supabase.instance.client;
       await supabase.from('cart_items').delete().eq('id', item.id);
@@ -435,12 +409,11 @@ class _CartScreenState extends ConsumerState<CartScreen> {
   }
 
   Future<void> _clearCart() async {
-    final confirmed = await showDialog<bool>(
+    final confirm = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
         title: const Text('Clear Cart'),
-        content: const Text(
-            'Are you sure you want to clear all items from the cart?'),
+        content: const Text('Are you sure you want to clear all items?'),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, false),
@@ -454,27 +427,14 @@ class _CartScreenState extends ConsumerState<CartScreen> {
       ),
     );
 
-    if (confirmed != true) return;
+    if (confirm != true) return;
 
     try {
       final supabase = Supabase.instance.client;
       final user = supabase.auth.currentUser;
-      final selectedClient = ref.read(selectedClientProvider);
-
-      if (user != null && selectedClient != null) {
-        await supabase
-            .from('cart_items')
-            .delete()
-            .eq('user_id', user.id)
-            .eq('client_id', selectedClient.id);
-
+      if (user != null) {
+        await supabase.from('cart_items').delete().eq('user_id', user.id);
         ref.invalidate(cartProvider);
-
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Cart cleared')),
-          );
-        }
       }
     } catch (e) {
       if (mounted) {
@@ -485,66 +445,244 @@ class _CartScreenState extends ConsumerState<CartScreen> {
     }
   }
 
-  void _emailQuote(
-      List<CartItem> items, double subtotal, double tax, double total) {
-    // TODO: Implement email functionality
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Email functionality coming soon')),
+  Future<void> _createQuote(List<CartItem> items, Client client) async {
+    setState(() => _isCreatingQuote = true);
+
+    try {
+      final supabase = Supabase.instance.client;
+      final user = supabase.auth.currentUser;
+      if (user == null) throw Exception('User not authenticated');
+
+      final subtotal = _calculateSubtotal(items);
+      final taxRate = double.tryParse(_taxRateController.text) ?? 0;
+      final taxAmount = subtotal * (taxRate / 100);
+      final total = subtotal + taxAmount;
+
+      // Generate quote number
+      final quoteNumber = 'Q${DateTime.now().millisecondsSinceEpoch}';
+
+      // Create quote
+      final quoteResponse = await supabase
+          .from('quotes')
+          .insert({
+            'user_id': user.id,
+            'client_id': client.id,
+            'quote_number': quoteNumber,
+            'subtotal': subtotal,
+            'tax_rate': taxRate,
+            'tax_amount': taxAmount,
+            'total_amount': total,
+            'status': 'draft',
+          })
+          .select()
+          .single();
+
+      final quoteId = quoteResponse['id'];
+
+      // Add quote items
+      for (final item in items) {
+        await supabase.from('quote_items').insert({
+          'quote_id': quoteId,
+          'product_id': item.productId,
+          'quantity': item.quantity,
+          'unit_price': item.product?.price ?? 0,
+          'total_price': (item.product?.price ?? 0) * item.quantity,
+        });
+      }
+
+      // Clear cart
+      await supabase.from('cart_items').delete().eq('user_id', user.id);
+
+      if (mounted) {
+        ref.invalidate(cartProvider);
+        ref.read(cartClientProvider.notifier).state = null;
+
+        // Show success and options
+        _showQuoteCreatedDialog(quoteNumber, quoteId, client);
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error creating quote: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    } finally {
+      setState(() => _isCreatingQuote = false);
+    }
+  }
+
+  void _showQuoteCreatedDialog(
+      String quoteNumber, String quoteId, Client client) {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => AlertDialog(
+        title: const Text('Quote Created!'),
+        content: Text('Quote #$quoteNumber has been created successfully.'),
+        actions: [
+          TextButton(
+            onPressed: () {
+              Navigator.pop(context);
+              _sendQuoteEmail(quoteId, client);
+            },
+            child: const Text('Send Email'),
+          ),
+          TextButton(
+            onPressed: () {
+              Navigator.pop(context);
+              _exportQuotePDF(quoteId);
+            },
+            child: const Text('Export PDF'),
+          ),
+          TextButton(
+            onPressed: () {
+              Navigator.pop(context);
+              _exportQuoteExcel(quoteId);
+            },
+            child: const Text('Export Excel'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Done'),
+          ),
+        ],
+      ),
     );
   }
 
-  void _exportPDF(
-      List<CartItem> items, double subtotal, double tax, double total) {
-    // TODO: Implement PDF export
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('PDF export coming soon')),
-    );
+  Future<void> _sendQuoteEmail(String quoteId, Client client) async {
+    try {
+      await EmailService.sendQuoteEmail(
+        quoteId: quoteId,
+        clientEmail: client.contactEmail ?? '',
+        context: context,
+      );
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Email sent successfully'),
+            backgroundColor: Colors.green,
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error sending email: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
   }
 
-  void _exportExcel(
-      List<CartItem> items, double subtotal, double tax, double total) {
-    // TODO: Implement Excel export
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Excel export coming soon')),
+  Future<void> _exportQuotePDF(String quoteId) async {
+    try {
+      final pdfBytes = await ExportService.generateQuotePDF(quoteId);
+      await Printing.sharePdf(
+        bytes: pdfBytes,
+        filename: 'quote_$quoteId.pdf',
+      );
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error exporting PDF: $e')),
+        );
+      }
+    }
+  }
+
+  Future<void> _exportQuoteExcel(String quoteId) async {
+    try {
+      final excelBytes = await ExportService.generateQuoteExcel(quoteId);
+      final directory = await getApplicationDocumentsDirectory();
+      final file = File('${directory.path}/quote_$quoteId.xlsx');
+      await file.writeAsBytes(excelBytes);
+
+      await Share.shareXFiles(
+        [XFile(file.path)],
+        subject: 'Quote Export',
+      );
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error exporting Excel: $e')),
+        );
+      }
+    }
+  }
+}
+
+// Client selector screen
+class ClientSelectorScreen extends ConsumerWidget {
+  const ClientSelectorScreen({super.key});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final clientsAsync = ref.watch(clientsProvider);
+
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('Select Client'),
+        backgroundColor: const Color(0xFF20429C),
+        foregroundColor: Colors.white,
+      ),
+      body: clientsAsync.when(
+        data: (clients) => ListView.builder(
+          itemCount: clients.length,
+          itemBuilder: (context, index) {
+            final client = clients[index];
+            return ListTile(
+              leading: CircleAvatar(
+                child: Text(client.company[0].toUpperCase()),
+              ),
+              title: Text(client.company),
+              subtitle:
+                  client.contactName != null ? Text(client.contactName!) : null,
+              onTap: () => Navigator.pop(context, client),
+            );
+          },
+        ),
+        loading: () => const Center(child: CircularProgressIndicator()),
+        error: (error, stack) => Center(child: Text('Error: $error')),
+      ),
     );
   }
 }
 
-// Cart item model
+// Models
 class CartItem {
   final String id;
   final String userId;
-  final String clientId;
   final String productId;
   final int quantity;
   final Product? product;
-  final DateTime createdAt;
 
   CartItem({
     required this.id,
     required this.userId,
-    required this.clientId,
     required this.productId,
     required this.quantity,
     this.product,
-    required this.createdAt,
   });
 
   factory CartItem.fromJson(Map<String, dynamic> json) {
     return CartItem(
       id: json['id'],
       userId: json['user_id'],
-      clientId: json['client_id'],
       productId: json['product_id'],
       quantity: json['quantity'],
       product:
           json['products'] != null ? Product.fromJson(json['products']) : null,
-      createdAt: DateTime.parse(json['created_at']),
     );
   }
 }
 
-// Product model for cart
 class Product {
   final String id;
   final String sku;

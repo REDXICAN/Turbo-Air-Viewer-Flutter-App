@@ -414,9 +414,135 @@ class _ClientsScreenState extends ConsumerState<ClientsScreen> {
   }
 
   void _editClient(Client client) {
-    // TODO: Implement edit functionality
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Edit functionality coming soon')),
+    _companyController.text = client.company;
+    _contactNameController.text = client.contactName ?? '';
+    _emailController.text = client.contactEmail ?? '';
+    _phoneController.text = client.phone ?? '';
+    _addressController.text = client.address ?? '';
+
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Edit Client'),
+        content: SingleChildScrollView(
+          child: Form(
+            key: _formKey,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                TextFormField(
+                  controller: _companyController,
+                  decoration: const InputDecoration(
+                    labelText: 'Company Name *',
+                    prefixIcon: Icon(Icons.business),
+                  ),
+                  validator: (value) {
+                    if (value == null || value.isEmpty) {
+                      return 'Please enter company name';
+                    }
+                    return null;
+                  },
+                ),
+                const SizedBox(height: 12),
+                TextFormField(
+                  controller: _contactNameController,
+                  decoration: const InputDecoration(
+                    labelText: 'Contact Name',
+                    prefixIcon: Icon(Icons.person),
+                  ),
+                ),
+                const SizedBox(height: 12),
+                TextFormField(
+                  controller: _emailController,
+                  decoration: const InputDecoration(
+                    labelText: 'Email',
+                    prefixIcon: Icon(Icons.email),
+                  ),
+                  keyboardType: TextInputType.emailAddress,
+                ),
+                const SizedBox(height: 12),
+                TextFormField(
+                  controller: _phoneController,
+                  decoration: const InputDecoration(
+                    labelText: 'Phone',
+                    prefixIcon: Icon(Icons.phone),
+                  ),
+                  keyboardType: TextInputType.phone,
+                ),
+                const SizedBox(height: 12),
+                TextFormField(
+                  controller: _addressController,
+                  decoration: const InputDecoration(
+                    labelText: 'Address',
+                    prefixIcon: Icon(Icons.location_on),
+                  ),
+                  maxLines: 2,
+                ),
+              ],
+            ),
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () {
+              Navigator.pop(context);
+              _clearForm();
+            },
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            onPressed: () async {
+              if (!_formKey.currentState!.validate()) return;
+
+              try {
+                final supabase = Supabase.instance.client;
+                await supabase.from('clients').update({
+                  'company': _companyController.text,
+                  'contact_name': _contactNameController.text.isEmpty
+                      ? null
+                      : _contactNameController.text,
+                  'contact_email': _emailController.text.isEmpty
+                      ? null
+                      : _emailController.text,
+                  'contact_number': _phoneController.text.isEmpty
+                      ? null
+                      : _phoneController.text,
+                  'address': _addressController.text.isEmpty
+                      ? null
+                      : _addressController.text,
+                }).eq('id', client.id);
+
+                // Check mounted before using context
+                if (!context.mounted) return;
+
+                Navigator.pop(context);
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    content: Text('Client updated successfully'),
+                    backgroundColor: Colors.green,
+                  ),
+                );
+                _clearForm();
+                ref.invalidate(clientsProvider);
+              } catch (e) {
+                if (!context.mounted) return;
+
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text('Error updating client: $e'),
+                    backgroundColor: Colors.red,
+                  ),
+                );
+              }
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFF20429C),
+              foregroundColor: Colors.white,
+            ),
+            child: const Text('Update'),
+          ),
+        ],
+      ),
     );
   }
 
@@ -434,11 +560,57 @@ class _ClientsScreenState extends ConsumerState<ClientsScreen> {
           TextButton(
             onPressed: () async {
               Navigator.pop(context);
-              // TODO: Implement delete functionality
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(
-                    content: Text('Delete functionality coming soon')),
-              );
+
+              try {
+                final supabase = Supabase.instance.client;
+
+                // Check if client has quotes
+                final quotesResponse = await supabase
+                    .from('quotes')
+                    .select('id')
+                    .eq('client_id', client.id)
+                    .limit(1);
+
+                if ((quotesResponse as List).isNotEmpty) {
+                  if (!context.mounted) return;
+
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content:
+                          Text('Cannot delete client with existing quotes'),
+                      backgroundColor: Colors.orange,
+                    ),
+                  );
+                  return;
+                }
+
+                // Delete client
+                await supabase.from('clients').delete().eq('id', client.id);
+
+                if (!context.mounted) return;
+
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text('Client "${client.company}" deleted'),
+                    backgroundColor: Colors.green,
+                  ),
+                );
+                ref.invalidate(clientsProvider);
+
+                // Clear selected client if it was deleted
+                if (ref.read(selectedClientProvider)?.id == client.id) {
+                  ref.read(selectedClientProvider.notifier).state = null;
+                }
+              } catch (e) {
+                if (mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text('Error deleting client: $e'),
+                      backgroundColor: Colors.red,
+                    ),
+                  );
+                }
+              }
             },
             child: const Text('Delete', style: TextStyle(color: Colors.red)),
           ),
