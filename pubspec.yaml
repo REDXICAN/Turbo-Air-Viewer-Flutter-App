@@ -10,8 +10,16 @@ dependencies:
   flutter:
     sdk: flutter
   
-  # Supabase
-  supabase_flutter: ^2.0.0
+  # Firebase (replacing Supabase)
+  firebase_core: ^2.24.2
+  firebase_auth: ^4.16.0
+  cloud_firestore: ^4.14.0
+  firebase_storage: ^11.6.0
+  firebase_analytics: ^10.8.0
+  firebase_crashlytics: ^3.4.9
+  firebase_performance: ^0.9.3+9
+  firebase_messaging: ^14.7.10
+  firebase_remote_config: ^4.3.8
   
   # State Management
   flutter_riverpod: ^2.4.0
