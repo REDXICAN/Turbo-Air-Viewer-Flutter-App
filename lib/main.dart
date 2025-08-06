@@ -9,36 +9,38 @@ import 'app.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  
+
   // Initialize Hive for local storage
   await Hive.initFlutter();
-  
+
   // Check if configuration is valid
-  if (AppConfig.supabaseUrl.isEmpty || 
+  if (AppConfig.supabaseUrl.isEmpty ||
       AppConfig.supabaseUrl.contains('your-project') ||
-      AppConfig.supabaseAnonKey.isEmpty || 
+      AppConfig.supabaseAnonKey.isEmpty ||
       AppConfig.supabaseAnonKey.contains('your-anon-key')) {
-    print('⚠️ WARNING: Supabase configuration not found!');
-    print('Please run with: flutter run --dart-define=SUPABASE_URL=xxx --dart-define=SUPABASE_ANON_KEY=xxx');
-    print('Or use the run_local.bat script');
-    
+    // Use debugPrint instead of print for production
+    debugPrint('⚠️ WARNING: Supabase configuration not found!');
+    debugPrint(
+        'Please run with: flutter run --dart-define=SUPABASE_URL=xxx --dart-define=SUPABASE_ANON_KEY=xxx');
+    debugPrint('Or use the run_local.bat script');
+
     // Show error UI
     runApp(const ConfigErrorApp());
     return;
   }
-  
+
   // Register Hive adapters (simplified without code generation)
-  // await OfflineService.registerAdapters();
-  
+  await OfflineService.registerAdapters();
+
   // Initialize Supabase
   await Supabase.initialize(
     url: AppConfig.supabaseUrl,
     anonKey: AppConfig.supabaseAnonKey,
   );
-  
+
   // Initialize offline storage
-  // await OfflineService.initialize();
-  
+  await OfflineService.initialize();
+
   runApp(
     const ProviderScope(
       child: TurboAirApp(),
@@ -49,7 +51,7 @@ void main() async {
 // Error app to show when configuration is missing
 class ConfigErrorApp extends StatelessWidget {
   const ConfigErrorApp({super.key});
-  
+
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
