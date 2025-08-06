@@ -1,13 +1,15 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_adaptive_scaffold/flutter_adaptive_scaffold.dart';
-import '../products/presentation/products_screen.dart'; // Fixed path
+import '../products/presentation/products_screen.dart';
 import '../cart/presentation/screens/cart_screen.dart';
 import '../clients/presentation/screens/clients_screen.dart';
-import '../quotes/presentation/screens/quotes_screen.dart';
+import '../quotes/presentation/screens/quotes_screen.dart'
+    hide Quote, QuoteItem, Client, Product;
 import '../profile/presentation/screens/profile_screen.dart';
 import '../auth/presentation/providers/auth_provider.dart';
 import '../../core/widgets/sync_indicator.dart';
+import '../../core/models/models.dart';
 
 class HomeScreen extends ConsumerStatefulWidget {
   const HomeScreen({super.key});
@@ -157,7 +159,10 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
           floating: true,
           snap: true,
           flexibleSpace: FlexibleSpaceBar(
-            title: Text('Welcome, ${user?.email ?? 'User'}'),
+            title: Text(
+              'Welcome, ${user?.email ?? 'User'}',
+              style: const TextStyle(color: Colors.white),
+            ),
             background: Container(
               decoration: BoxDecoration(
                 gradient: LinearGradient(
@@ -179,7 +184,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
               maxCrossAxisExtent: 200,
               mainAxisSpacing: 16,
               crossAxisSpacing: 16,
-              childAspectRatio: 1.5,
+              childAspectRatio: 1.3,
             ),
             delegate: SliverChildListDelegate([
               _buildStatCard(
@@ -252,7 +257,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                             style: Theme.of(context).textTheme.bodySmall,
                           ),
                           onTap: () {
-                            // Navigate to quote details
+                            _showQuoteDetails(quote);
                           },
                         ),
                       )),
@@ -331,5 +336,144 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     } else {
       return '${date.day}/${date.month}/${date.year}';
     }
+  }
+
+  void _showQuoteDetails(Quote quote) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (context) => Container(
+        height: MediaQuery.of(context).size.height * 0.8,
+        decoration: const BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.only(
+            topLeft: Radius.circular(20),
+            topRight: Radius.circular(20),
+          ),
+        ),
+        child: Column(
+          children: [
+            // Handle bar
+            Container(
+              width: 40,
+              height: 4,
+              margin: const EdgeInsets.symmetric(vertical: 12),
+              decoration: BoxDecoration(
+                color: Colors.grey[300],
+                borderRadius: BorderRadius.circular(2),
+              ),
+            ),
+
+            // Header
+            Padding(
+              padding: const EdgeInsets.all(16),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text(
+                    'Quote #${quote.quoteNumber}',
+                    style: const TextStyle(
+                        fontSize: 20, fontWeight: FontWeight.bold),
+                  ),
+                  IconButton(
+                    onPressed: () => Navigator.pop(context),
+                    icon: const Icon(Icons.close),
+                  ),
+                ],
+              ),
+            ),
+
+            // Quote details
+            Expanded(
+              child: ListView(
+                padding: const EdgeInsets.all(16),
+                children: [
+                  // Totals summary at top
+                  Container(
+                    padding: const EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      color: Colors.grey[100],
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Column(
+                      children: [
+                        _buildDetailRow('Subtotal',
+                            '\$${quote.subtotal.toStringAsFixed(2)}'),
+                        _buildDetailRow('Tax (${quote.taxRate}%)',
+                            '\$${quote.taxAmount.toStringAsFixed(2)}'),
+                        const Divider(),
+                        _buildDetailRow(
+                          'Total',
+                          '\$${quote.totalAmount.toStringAsFixed(2)}',
+                          isBold: true,
+                        ),
+                      ],
+                    ),
+                  ),
+
+                  const SizedBox(height: 16),
+
+                  // Items
+                  Text(
+                    'Items (${quote.items.length})',
+                    style: const TextStyle(
+                        fontSize: 16, fontWeight: FontWeight.bold),
+                  ),
+                  const SizedBox(height: 8),
+                  ...quote.items.map((item) => Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 8),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    item.product?.sku ?? 'Unknown',
+                                    style: const TextStyle(
+                                        fontWeight: FontWeight.w500),
+                                  ),
+                                  Text(
+                                    '${item.quantity} × \$${item.unitPrice.toStringAsFixed(2)}',
+                                    style: TextStyle(
+                                        color: Colors.grey[600], fontSize: 12),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            Text(
+                              '\$${item.totalPrice.toStringAsFixed(2)}',
+                              style:
+                                  const TextStyle(fontWeight: FontWeight.bold),
+                            ),
+                          ],
+                        ),
+                      )),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildDetailRow(String label, String value, {bool isBold = false}) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 4),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Text(label,
+              style: TextStyle(
+                  fontWeight: isBold ? FontWeight.bold : FontWeight.normal)),
+          Text(value,
+              style: TextStyle(
+                  fontWeight: isBold ? FontWeight.bold : FontWeight.normal)),
+        ],
+      ),
+    );
   }
 }

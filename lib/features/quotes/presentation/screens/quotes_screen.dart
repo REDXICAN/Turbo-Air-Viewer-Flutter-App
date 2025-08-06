@@ -11,7 +11,7 @@ final quotesProvider = FutureProvider<List<Quote>>((ref) async {
 
   final response = await supabase
       .from('quotes')
-      .select('*, clients(*), quote_items(*, products(*))')
+      .select(', clients(), quote_items(, products())')
       .eq('user_id', user.id)
       .order('created_at', ascending: false);
 
