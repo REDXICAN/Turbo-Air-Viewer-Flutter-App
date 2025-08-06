@@ -10,6 +10,7 @@ import '../../../clients/presentation/screens/clients_screen.dart'
     show clientsProvider;
 import '../../../../core/services/email_service.dart';
 import '../../../../core/services/export_service.dart';
+import '../../../../core/utils/product_image_helper.dart';
 
 // Cart provider
 final cartProvider = FutureProvider<List<CartItem>>((ref) async {
@@ -245,15 +246,12 @@ class _CartScreenState extends ConsumerState<CartScreen> {
         padding: const EdgeInsets.all(12),
         child: Row(
           children: [
-            // Product image placeholder
-            Container(
+            // Product image with helper
+            ProductImageHelper.buildProductThumbnail(
+              sku: item.product?.sku ?? 'unknown',
+              page: 'P.1',
               width: 60,
               height: 60,
-              decoration: BoxDecoration(
-                color: Colors.grey[200],
-                borderRadius: BorderRadius.circular(8),
-              ),
-              child: const Icon(Icons.image, color: Colors.grey),
             ),
             const SizedBox(width: 12),
 

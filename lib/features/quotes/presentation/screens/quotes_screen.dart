@@ -1,7 +1,9 @@
+// lib/features/quotes/presentation/screens/quotes_screen.dart
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:intl/intl.dart';
+import '../../../../core/utils/product_image_helper.dart';
 
 // Quotes provider
 final quotesProvider = FutureProvider<List<Quote>>((ref) async {
@@ -403,16 +405,23 @@ class _QuotesScreenState extends ConsumerState<QuotesScreen> {
 
                   const SizedBox(height: 16),
 
-                  // Items
+                  // Items with thumbnails
                   _buildDetailSection(
                     'Items (${quote.items.length})',
                     quote.items
                         .map((item) => Padding(
                               padding: const EdgeInsets.symmetric(vertical: 8),
                               child: Row(
-                                mainAxisAlignment:
-                                    MainAxisAlignment.spaceBetween,
                                 children: [
+                                  // Product thumbnail
+                                  ProductImageHelper.buildProductThumbnail(
+                                    sku: item.product?.sku ?? 'unknown',
+                                    page: 'P.1',
+                                    width: 40,
+                                    height: 40,
+                                  ),
+                                  const SizedBox(width: 12),
+                                  // Product details
                                   Expanded(
                                     child: Column(
                                       crossAxisAlignment:
@@ -432,6 +441,7 @@ class _QuotesScreenState extends ConsumerState<QuotesScreen> {
                                       ],
                                     ),
                                   ),
+                                  // Price
                                   Text(
                                     '\$${item.totalPrice.toStringAsFixed(2)}',
                                     style: const TextStyle(

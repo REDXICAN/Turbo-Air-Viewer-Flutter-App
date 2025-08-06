@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../../core/config/app_config.dart';
+import '../../../core/utils/product_image_helper.dart';
 import '../../clients/presentation/screens/clients_screen.dart'
     show selectedClientProvider;
 
@@ -233,33 +234,13 @@ class _ProductsScreenState extends ConsumerState<ProductsScreen> {
     );
   }
 
-  String _getImagePath(String sku, String page) {
-    // Handle special characters in SKU for file path
-    // The actual file might have different naming than the SKU in database
-    return 'assets/screenshots/$sku/$sku $page.png';
-  }
-
   Widget _buildProductItem(Product product) {
     return Card(
       margin: const EdgeInsets.only(bottom: 12),
       child: ExpansionTile(
-        leading: Container(
-          width: 60,
-          height: 60,
-          decoration: BoxDecoration(
-            color: Colors.grey[200],
-            borderRadius: BorderRadius.circular(8),
-          ),
-          child: ClipRRect(
-            borderRadius: BorderRadius.circular(8),
-            child: Image.asset(
-              _getImagePath(product.sku, 'P.1'),
-              fit: BoxFit.cover,
-              errorBuilder: (context, error, stackTrace) {
-                return const Icon(Icons.image, color: Colors.grey);
-              },
-            ),
-          ),
+        leading: ProductImageHelper.buildProductThumbnail(
+          sku: product.sku,
+          page: 'P.1',
         ),
         title: Text(
           product.sku,
@@ -303,18 +284,30 @@ class _ProductsScreenState extends ConsumerState<ProductsScreen> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Expanded(
-                      child: _buildScreenshotThumbnail(
-                        product.sku,
-                        'P.1',
-                        'Page 1',
+                      child: ProductImageHelper.buildScreenshotThumbnail(
+                        sku: product.sku,
+                        page: 'P.1',
+                        label: 'Page 1',
+                        onTap: () => ProductImageHelper.showFullScreenImage(
+                          context,
+                          product.sku,
+                          'P.1',
+                          'Page 1',
+                        ),
                       ),
                     ),
                     const SizedBox(width: 12),
                     Expanded(
-                      child: _buildScreenshotThumbnail(
-                        product.sku,
-                        'P.2',
-                        'Page 2',
+                      child: ProductImageHelper.buildScreenshotThumbnail(
+                        sku: product.sku,
+                        page: 'P.2',
+                        label: 'Page 2',
+                        onTap: () => ProductImageHelper.showFullScreenImage(
+                          context,
+                          product.sku,
+                          'P.2',
+                          'Page 2',
+                        ),
                       ),
                     ),
                   ],
@@ -350,199 +343,6 @@ class _ProductsScreenState extends ConsumerState<ProductsScreen> {
             ),
           ),
         ],
-      ),
-    );
-  }
-
-  Widget _buildScreenshotThumbnail(String sku, String page, String label) {
-    final imagePath = _getImagePath(sku, page);
-
-    return GestureDetector(
-      onTap: () => _showFullScreenImage(imagePath, label),
-      child: Container(
-        decoration: BoxDecoration(
-          color: Colors.grey[200],
-          borderRadius: BorderRadius.circular(8),
-          border: Border.all(color: Colors.grey[300]!),
-        ),
-        child: ClipRRect(
-          borderRadius: BorderRadius.circular(8),
-          child: Stack(
-            children: [
-              Image.asset(
-                imagePath,
-                fit: BoxFit.contain,
-                width: double.infinity,
-                errorBuilder: (context, error, stackTrace) {
-                  return Container(
-                    height: 120,
-                    alignment: Alignment.center,
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        const Icon(Icons.image_not_supported,
-                            color: Colors.grey, size: 40),
-                        const SizedBox(height: 8),
-                        Text(
-                          label,
-                          style:
-                              TextStyle(color: Colors.grey[600], fontSize: 12),
-                        ),
-                      ],
-                    ),
-                  );
-                },
-              ),
-              Positioned(
-                bottom: 0,
-                left: 0,
-                right: 0,
-                child: Container(
-                  padding: const EdgeInsets.symmetric(vertical: 4),
-                  decoration: BoxDecoration(
-                    gradient: LinearGradient(
-                      begin: Alignment.bottomCenter,
-                      end: Alignment.topCenter,
-                      colors: [
-                        Colors.black.withOpacity(0.7),
-                        Colors.transparent,
-                      ],
-                    ),
-                  ),
-                  child: Text(
-                    label,
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 12,
-                      fontWeight: FontWeight.w500,
-                    ),
-                    textAlign: TextAlign.center,
-                  ),
-                ),
-              ),
-              Positioned(
-                top: 8,
-                right: 8,
-                child: Container(
-                  padding: const EdgeInsets.all(4),
-                  decoration: BoxDecoration(
-                    color: Colors.black.withOpacity(0.5),
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: const Icon(
-                    Icons.zoom_in,
-                    color: Colors.white,
-                    size: 16,
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  void _showFullScreenImage(String imagePath, String title) {
-    showDialog(
-      context: context,
-      builder: (context) => Dialog(
-        backgroundColor: Colors.transparent,
-        insetPadding: const EdgeInsets.all(10),
-        child: Stack(
-          alignment: Alignment.center,
-          children: [
-            // Background (tap to close)
-            GestureDetector(
-              onTap: () => Navigator.pop(context),
-              child: Container(color: Colors.black.withOpacity(0.9)),
-            ),
-            // Image container
-            Container(
-              constraints: BoxConstraints(
-                maxWidth: MediaQuery.of(context).size.width * 0.9,
-                maxHeight: MediaQuery.of(context).size.height * 0.8,
-              ),
-              child: InteractiveViewer(
-                panEnabled: true,
-                minScale: 0.5,
-                maxScale: 4,
-                child: Image.asset(
-                  imagePath,
-                  fit: BoxFit.contain,
-                  errorBuilder: (context, error, stackTrace) {
-                    return Container(
-                      padding: const EdgeInsets.all(32),
-                      decoration: BoxDecoration(
-                        color: Colors.white,
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      child: Column(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          const Icon(
-                            Icons.image_not_supported,
-                            size: 64,
-                            color: Colors.grey,
-                          ),
-                          const SizedBox(height: 16),
-                          Text(
-                            'Image not available',
-                            style: TextStyle(
-                              color: Colors.grey[700],
-                              fontSize: 16,
-                            ),
-                          ),
-                        ],
-                      ),
-                    );
-                  },
-                ),
-              ),
-            ),
-            // Close button
-            Positioned(
-              top: 40,
-              right: 20,
-              child: IconButton(
-                onPressed: () => Navigator.pop(context),
-                icon: Container(
-                  padding: const EdgeInsets.all(8),
-                  decoration: BoxDecoration(
-                    color: Colors.black.withOpacity(0.7),
-                    borderRadius: BorderRadius.circular(20),
-                  ),
-                  child: const Icon(
-                    Icons.close,
-                    color: Colors.white,
-                    size: 24,
-                  ),
-                ),
-              ),
-            ),
-            // Title
-            Positioned(
-              top: 40,
-              left: 20,
-              child: Container(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                decoration: BoxDecoration(
-                  color: Colors.black.withOpacity(0.7),
-                  borderRadius: BorderRadius.circular(20),
-                ),
-                child: Text(
-                  title,
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontSize: 16,
-                    fontWeight: FontWeight.w500,
-                  ),
-                ),
-              ),
-            ),
-          ],
-        ),
       ),
     );
   }
