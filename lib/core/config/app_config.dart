@@ -1,15 +1,19 @@
-import 'env_config.dart' as env;
+// Location: lib/core/config/app_config.dart
+import 'package:flutter/foundation.dart';
 
 class AppConfig {
-  // Supabase Configuration from environment variables
-  static const String supabaseUrl = env.EnvConfig.supabaseUrl;
-  static const String supabaseAnonKey = env.EnvConfig.supabaseAnonKey;
+  // Firebase configuration is handled by firebase_options.dart (auto-generated)
+  // No need for manual URLs or keys like with Supabase
 
-  // Edge Function URLs
-  static String get emailFunctionUrl => '$supabaseUrl/functions/v1/send-email';
-  static String get syncFunctionUrl => '$supabaseUrl/functions/v1/sync-data';
+  // Cloud Functions URLs (Firebase equivalent)
+  // These will be set up after deploying Firebase Functions
+  static const String cloudFunctionsRegion = 'us-central1';
+  static String get emailFunctionUrl =>
+      'https://$cloudFunctionsRegion-your-project-id.cloudfunctions.net/sendEmail';
+  static String get syncFunctionUrl =>
+      'https://$cloudFunctionsRegion-your-project-id.cloudfunctions.net/syncData';
 
-  // App Settings
+  // App Settings (keeping your existing settings)
   static const int itemsPerPage = 20;
   static const int maxSearchHistory = 10;
   static const Duration syncInterval = Duration(minutes: 5);
@@ -21,7 +25,20 @@ class AppConfig {
   // File Size Limits
   static const int maxFileSize = 200 * 1024 * 1024; // 200MB
 
-  // Categories
+  // Firebase-specific settings
+  static const bool enableOfflineMode = true;
+  static const bool enableAnalytics = true;
+  static const bool enableCrashlytics = !kDebugMode;
+
+  // Firestore settings
+  static const bool persistenceEnabled = true;
+  static const int cacheSizeBytes = 100 * 1024 * 1024; // 100MB cache
+
+  // Development settings
+  static const bool showDebugInfo = kDebugMode;
+  static const bool enableLogging = kDebugMode;
+
+  // Categories (keeping your existing categories exactly as they are)
   static const Map<String, CategoryInfo> categories = {
     'REACH-IN REFRIGERATION': CategoryInfo(
       icon: '❄️',

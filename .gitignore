@@ -126,3 +126,20 @@ config.dev.dart
 # Add this line to .gitignore
 lib/core/config/env_config.dart
 env_config.dart
+
+# Firebase configuration files
+lib/firebase_options.dart
+ios/firebase_app_id_file.json
+android/app/google-services.json
+ios/Runner/GoogleService-Info.plist
+macos/Runner/GoogleService-Info.plist
+
+# Environment configuration
+lib/core/config/env_config.dart
+env_config.dart
+
+# Firebase emulator files
+firebase-debug.log
+firestore-debug.log
+ui-debug.log
+firebase-export-*
