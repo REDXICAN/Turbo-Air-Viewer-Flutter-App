@@ -12,14 +12,20 @@ class ProductImageHelper {
   static Widget buildProductThumbnail({
     required String sku,
     String page = 'P.1',
-    double size = 60,
+    double? size,
+    double? width,
+    double? height,
     VoidCallback? onTap,
   }) {
+    // Use width/height if provided, otherwise use size, default to 60
+    final w = width ?? size ?? 60;
+    final h = height ?? size ?? 60;
+
     return GestureDetector(
       onTap: onTap,
       child: Container(
-        width: size,
-        height: size,
+        width: w,
+        height: h,
         decoration: BoxDecoration(
           color: Colors.grey[200],
           borderRadius: BorderRadius.circular(8),
@@ -33,7 +39,7 @@ class ProductImageHelper {
               return Icon(
                 Icons.image,
                 color: Colors.grey[400],
-                size: size * 0.5,
+                size: (w < h ? w : h) * 0.5,
               );
             },
           ),
