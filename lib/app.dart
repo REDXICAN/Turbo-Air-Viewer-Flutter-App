@@ -4,6 +4,7 @@ import 'core/theme/app_theme.dart';
 import 'core/router/app_router.dart';
 import 'features/auth/presentation/providers/auth_provider.dart';
 import 'features/auth/presentation/screens/splash_screen.dart';
+import 'features/profile/presentation/screens/profile_screen.dart';
 
 class TurboAirApp extends ConsumerWidget {
   const TurboAirApp({super.key});
@@ -11,14 +12,13 @@ class TurboAirApp extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final authState = ref.watch(authStateProvider);
-
-    // Platform adaptive theming
-    final brightness = MediaQuery.platformBrightnessOf(context);
-    final theme = AppTheme.getTheme(brightness);
+    final themeMode = ref.watch(themeModeProvider);
 
     return MaterialApp.router(
       title: 'Turbo Air',
-      theme: theme,
+      theme: AppTheme.getTheme(Brightness.light),
+      darkTheme: AppTheme.getTheme(Brightness.dark),
+      themeMode: themeMode,
       debugShowCheckedModeBanner: false,
       routerConfig: AppRouter.router,
       builder: (context, child) {
