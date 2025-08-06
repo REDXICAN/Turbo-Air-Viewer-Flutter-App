@@ -1,7 +1,6 @@
 // lib/core/services/email_service.dart
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
-// Removed unused import
 
 class EmailService {
   static Future<void> sendQuoteEmail({
@@ -11,11 +10,10 @@ class EmailService {
     String? additionalMessage,
     bool attachPdf = false,
     bool attachExcel = false,
-    required BuildContext context,
   }) async {
     try {
       final supabase = Supabase.instance.client;
-      
+
       // Get quote details
       final quoteResponse = await supabase
           .from('quotes')
@@ -27,13 +25,15 @@ class EmailService {
       final quoteData = {
         'quoteNumber': quoteResponse['quote_number'],
         'clientName': quoteResponse['clients']['company'],
-        'items': (quoteResponse['quote_items'] as List).map((item) => {
-          'sku': item['products']['sku'],
-          'productType': item['products']['product_type'] ?? '',
-          'quantity': item['quantity'],
-          'unitPrice': item['unit_price'],
-          'totalPrice': item['total_price'],
-        }).toList(),
+        'items': (quoteResponse['quote_items'] as List)
+            .map((item) => {
+                  'sku': item['products']['sku'],
+                  'productType': item['products']['product_type'] ?? '',
+                  'quantity': item['quantity'],
+                  'unitPrice': item['unit_price'],
+                  'totalPrice': item['total_price'],
+                })
+            .toList(),
         'subtotal': quoteResponse['subtotal'],
         'taxRate': quoteResponse['tax_rate'],
         'taxAmount': quoteResponse['tax_amount'],
@@ -62,9 +62,7 @@ class EmailService {
       // Update quote status to 'sent'
       await supabase
           .from('quotes')
-          .update({'status': 'sent'})
-          .eq('id', quoteId);
-
+          .update({'status': 'sent'}).eq('id', quoteId);
     } catch (e) {
       throw Exception('Failed to send email: $e');
     }
@@ -72,11 +70,10 @@ class EmailService {
 
   static Future<void> sendQuoteReminder({
     required String quoteId,
-    required BuildContext context,
   }) async {
     try {
       final supabase = Supabase.instance.client;
-      
+
       // Get quote with client info
       final quoteResponse = await supabase
           .from('quotes')
@@ -91,8 +88,8 @@ class EmailService {
       await sendQuoteEmail(
         quoteId: quoteId,
         clientEmail: quoteResponse['clients']['contact_email'],
-        additionalMessage: 'This is a friendly reminder about your quote. Please let us know if you have any questions.',
-        context: context,
+        additionalMessage:
+            'This is a friendly reminder about your quote. Please let us know if you have any questions.',
       );
     } catch (e) {
       throw Exception('Failed to send reminder: $e');
@@ -109,7 +106,8 @@ class EmailService {
 
     for (final quoteId in quoteIds) {
       try {
-        await sendQuoteReminder(quoteId: quoteId, context: context);
+        if (!context.mounted) return;
+        await sendQuoteReminder(quoteId: quoteId);
         successCount++;
       } catch (e) {
         failureCount++;
@@ -117,8 +115,7 @@ class EmailService {
     }
 
     if (context.mounted) {
-      if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
+      ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text('Sent: $successCount, Failed: $failureCount'),
           backgroundColor: failureCount > 0 ? Colors.orange : Colors.green,

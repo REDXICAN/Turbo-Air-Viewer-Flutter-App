@@ -1,17 +1,13 @@
+// lib/features/cart/presentation/screens/cart_screen.dart
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
-import 'package:uuid/uuid.dart';
-import 'package:pdf/pdf.dart';
-import 'package:pdf/widgets.dart' as pw;
 import 'package:printing/printing.dart';
-import 'package:excel/excel.dart' as excel_pkg;
 import 'package:share_plus/share_plus.dart';
 import 'dart:io';
 import 'package:path_provider/path_provider.dart';
-import 'dart:typed_data';
 import '../../../clients/presentation/screens/clients_screen.dart'
-    show selectedClientProvider, clientsProvider;
+    show clientsProvider;
 import '../../../../core/services/email_service.dart';
 import '../../../../core/services/export_service.dart';
 
@@ -29,7 +25,7 @@ final cartProvider = FutureProvider<List<CartItem>>((ref) async {
   return (response as List).map((json) => CartItem.fromJson(json)).toList();
 });
 
-// Selected client for cart
+// Cart client provider - separate from clients screen selection
 final cartClientProvider = StateProvider<Client?>((ref) => null);
 
 class CartScreen extends ConsumerStatefulWidget {
@@ -120,9 +116,7 @@ class _CartScreenState extends ConsumerState<CartScreen> {
                               ? Text(selectedClient.contactName!)
                               : null,
                           trailing: TextButton(
-                            onPressed: () => ref
-                                .read(cartClientProvider.notifier)
-                                .state = null,
+                            onPressed: () => _selectClient(),
                             child: const Text('Change'),
                           ),
                         ),
@@ -495,7 +489,6 @@ class _CartScreenState extends ConsumerState<CartScreen> {
 
       if (mounted) {
         ref.invalidate(cartProvider);
-        ref.read(cartClientProvider.notifier).state = null;
 
         // Show success and options
         _showQuoteCreatedDialog(quoteNumber, quoteId, client);
@@ -558,7 +551,6 @@ class _CartScreenState extends ConsumerState<CartScreen> {
       await EmailService.sendQuoteEmail(
         quoteId: quoteId,
         clientEmail: client.contactEmail ?? '',
-        context: context,
       );
 
       if (mounted) {
@@ -702,6 +694,29 @@ class Product {
       sku: json['sku'],
       productType: json['product_type'],
       price: json['price']?.toDouble(),
+    );
+  }
+}
+
+class Client {
+  final String id;
+  final String company;
+  final String? contactName;
+  final String? contactEmail;
+
+  Client({
+    required this.id,
+    required this.company,
+    this.contactName,
+    this.contactEmail,
+  });
+
+  factory Client.fromJson(Map<String, dynamic> json) {
+    return Client(
+      id: json['id'],
+      company: json['company'],
+      contactName: json['contact_name'],
+      contactEmail: json['contact_email'],
     );
   }
 }

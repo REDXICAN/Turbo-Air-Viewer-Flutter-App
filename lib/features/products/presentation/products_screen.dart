@@ -2,8 +2,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
-import 'package:cached_network_image/cached_network_image.dart';
 import '../../../core/config/app_config.dart';
+import '../../clients/presentation/screens/clients_screen.dart'
+    show selectedClientProvider;
 
 // Products provider
 final productsProvider =
@@ -311,8 +312,9 @@ class _ProductsScreenState extends ConsumerState<ProductsScreen> {
   }
 
   Widget _buildSpecRow(String label, String? value) {
-    if (value == null || value.isEmpty || value == '-')
+    if (value == null || value.isEmpty || value == '-') {
       return const SizedBox.shrink();
+    }
 
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 4),
@@ -338,27 +340,29 @@ class _ProductsScreenState extends ConsumerState<ProductsScreen> {
       final user = supabase.auth.currentUser;
 
       if (user == null) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Please sign in to add items to cart'),
-            backgroundColor: Colors.orange,
-          ),
-        );
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Please sign in to add items to cart'),
+              backgroundColor: Colors.orange,
+            ),
+          );
+        }
         return;
       }
 
-      // Import selectedClientProvider from clients_screen.dart
-      final clientsModule = await import(
-          '../../../clients/presentation/screens/clients_screen.dart');
-      final selectedClient = ref.read(clientsModule.selectedClientProvider);
+      // Get selected client from provider
+      final selectedClient = ref.read(selectedClientProvider);
 
       if (selectedClient == null) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Please select a client first'),
-            backgroundColor: Colors.orange,
-          ),
-        );
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Please select a client first'),
+              backgroundColor: Colors.orange,
+            ),
+          );
+        }
         return;
       }
 
