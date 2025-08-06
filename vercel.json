@@ -1,16 +1,12 @@
 {
-  "buildCommand": "unset JAVA_HOME && flutter/bin/flutter build web --release --dart-define=SUPABASE_URL=$SUPABASE_URL --dart-define=SUPABASE_ANON_KEY=$SUPABASE_ANON_KEY --web-renderer html",
+  "buildCommand": "chmod +x vercel-build.sh && ./vercel-build.sh",
   "outputDirectory": "build/web",
   "framework": null,
-  "installCommand": "git clone https://github.com/flutter/flutter.git -b stable && export PATH=\"$PATH:`pwd`/flutter/bin\" && flutter doctor && flutter pub get",
+  "installCommand": "git clone https://github.com/flutter/flutter.git -b stable && flutter/bin/flutter pub get",
   "routes": [
     {
       "src": "/(.*)",
       "dest": "/"
     }
-  ],
-  "env": {
-    "FLUTTER_WEB_RENDERER": "html",
-    "JAVA_HOME": ""
-  }
+  ]
 }
