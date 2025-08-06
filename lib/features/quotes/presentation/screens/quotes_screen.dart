@@ -11,7 +11,7 @@ final quotesProvider = FutureProvider<List<Quote>>((ref) async {
 
   final response = await supabase
       .from('quotes')
-      .select(', clients(), quote_items(, products())')
+      .select('*, clients(*), quote_items(*, products(*))')
       .eq('user_id', user.id)
       .order('created_at', ascending: false);
 
@@ -304,6 +304,13 @@ class _QuotesScreenState extends ConsumerState<QuotesScreen> {
                       ),
                     ),
                   ),
+                  const SizedBox(width: 8),
+                  IconButton(
+                    onPressed: () => _deleteQuote(quote),
+                    icon: const Icon(Icons.delete_outline, size: 20),
+                    color: Colors.red,
+                    tooltip: 'Delete',
+                  ),
                 ],
               ),
             ],
@@ -540,6 +547,64 @@ class _QuotesScreenState extends ConsumerState<QuotesScreen> {
             ),
           ],
         ),
+      ),
+    );
+  }
+
+  void _deleteQuote(Quote quote) {
+    showDialog(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('Delete Quote'),
+        content: Text(
+            'Are you sure you want to delete quote #${quote.quoteNumber}?\n\nThis action cannot be undone.'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () async {
+              Navigator.pop(dialogContext);
+
+              try {
+                final supabase = Supabase.instance.client;
+
+                // Delete quote items first (due to foreign key constraint)
+                await supabase
+                    .from('quote_items')
+                    .delete()
+                    .eq('quote_id', quote.id);
+
+                // Then delete the quote
+                await supabase.from('quotes').delete().eq('id', quote.id);
+
+                if (mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text(
+                          'Quote #${quote.quoteNumber} deleted successfully'),
+                      backgroundColor: Colors.green,
+                    ),
+                  );
+
+                  // Refresh the quotes list
+                  ref.invalidate(quotesProvider);
+                }
+              } catch (e) {
+                if (mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text('Error deleting quote: $e'),
+                      backgroundColor: Colors.red,
+                    ),
+                  );
+                }
+              }
+            },
+            child: const Text('Delete', style: TextStyle(color: Colors.red)),
+          ),
+        ],
       ),
     );
   }
