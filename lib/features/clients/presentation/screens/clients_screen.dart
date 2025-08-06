@@ -7,12 +7,8 @@ class ClientsScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Clients'),
-      ),
-      body: const Center(
-        child: Text('Clients Screen - To be implemented'),
-      ),
+      appBar: AppBar(title: const Text('ClientsScreen')),
+      body: const Center(child: Text('ClientsScreen - To be implemented')),
     );
   }
 }

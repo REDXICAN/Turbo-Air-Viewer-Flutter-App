@@ -7,8 +7,8 @@ class ProductsScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Products')),
-      body: const Center(child: Text('Products Screen - To be implemented')),
+      appBar: AppBar(title: const Text('ProductsScreen')),
+      body: const Center(child: Text('ProductsScreen - To be implemented')),
     );
   }
 }

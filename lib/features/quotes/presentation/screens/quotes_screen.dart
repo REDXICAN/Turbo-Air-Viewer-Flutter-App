@@ -7,8 +7,8 @@ class QuotesScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Quotes')),
-      body: const Center(child: Text('Quotes Screen - To be implemented')),
+      appBar: AppBar(title: const Text('QuotesScreen')),
+      body: const Center(child: Text('QuotesScreen - To be implemented')),
     );
   }
 }
