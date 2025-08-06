@@ -183,7 +183,7 @@ class Product extends HiveObject {
   }
 
   String get displayName => productType ?? sku;
-  String get imageUrl => 'assets/screenshots/${sku}/${sku} P.1.png';
+  String get imageUrl => 'assets/screenshots/$sku/$sku P.1.png';
 }
 
 /// Client Model

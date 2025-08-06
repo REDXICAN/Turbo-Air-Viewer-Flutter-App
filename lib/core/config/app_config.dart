@@ -1,5 +1,3 @@
-/// Configuration for the Turbo Air app
-/// Location: lib/core/config/app_config.dart
 import 'env_config.dart' as env;
 
 class AppConfig {

@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/cupertino.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'core/theme/app_theme.dart';
 import 'core/router/app_router.dart';
@@ -12,11 +11,11 @@ class TurboAirApp extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final authState = ref.watch(authStateProvider);
-    
+
     // Platform adaptive theming
     final brightness = MediaQuery.platformBrightnessOf(context);
     final theme = AppTheme.getTheme(brightness);
-    
+
     return MaterialApp.router(
       title: 'Turbo Air',
       theme: theme,
