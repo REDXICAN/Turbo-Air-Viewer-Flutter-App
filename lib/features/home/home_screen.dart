@@ -252,7 +252,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                             style: Theme.of(context).textTheme.bodySmall,
                           ),
                           onTap: () {
-                            // Navigate to quote details
+                            setState(() => _selectedIndex = 4);
                           },
                         ),
                       )),
@@ -275,7 +275,6 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
       elevation: 2,
       child: InkWell(
         onTap: () {
-          // Navigate to relevant screen
           switch (title) {
             case 'Total Clients':
               setState(() => _selectedIndex = 2);
