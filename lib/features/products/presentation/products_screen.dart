@@ -233,6 +233,12 @@ class _ProductsScreenState extends ConsumerState<ProductsScreen> {
     );
   }
 
+  String _getImagePath(String sku, String page) {
+    // Handle special characters in SKU for file path
+    // The actual file might have different naming than the SKU in database
+    return 'assets/screenshots/$sku/$sku $page.png';
+  }
+
   Widget _buildProductItem(Product product) {
     return Card(
       margin: const EdgeInsets.only(bottom: 12),
@@ -247,7 +253,7 @@ class _ProductsScreenState extends ConsumerState<ProductsScreen> {
           child: ClipRRect(
             borderRadius: BorderRadius.circular(8),
             child: Image.asset(
-              'assets/screenshots/${product.sku}/${product.sku} P.1.png',
+              _getImagePath(product.sku, 'P.1'),
               fit: BoxFit.cover,
               errorBuilder: (context, error, stackTrace) {
                 return const Icon(Icons.image, color: Colors.grey);
@@ -294,17 +300,20 @@ class _ProductsScreenState extends ConsumerState<ProductsScreen> {
                 ),
                 const SizedBox(height: 12),
                 Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Expanded(
                       child: _buildScreenshotThumbnail(
-                        'assets/screenshots/${product.sku}/${product.sku} P.1.png',
+                        product.sku,
+                        'P.1',
                         'Page 1',
                       ),
                     ),
                     const SizedBox(width: 12),
                     Expanded(
                       child: _buildScreenshotThumbnail(
-                        'assets/screenshots/${product.sku}/${product.sku} P.2.png',
+                        product.sku,
+                        'P.2',
                         'Page 2',
                       ),
                     ),
@@ -345,11 +354,12 @@ class _ProductsScreenState extends ConsumerState<ProductsScreen> {
     );
   }
 
-  Widget _buildScreenshotThumbnail(String imagePath, String label) {
+  Widget _buildScreenshotThumbnail(String sku, String page, String label) {
+    final imagePath = _getImagePath(sku, page);
+
     return GestureDetector(
       onTap: () => _showFullScreenImage(imagePath, label),
       child: Container(
-        height: 120,
         decoration: BoxDecoration(
           color: Colors.grey[200],
           borderRadius: BorderRadius.circular(8),
@@ -358,23 +368,28 @@ class _ProductsScreenState extends ConsumerState<ProductsScreen> {
         child: ClipRRect(
           borderRadius: BorderRadius.circular(8),
           child: Stack(
-            fit: StackFit.expand,
             children: [
               Image.asset(
                 imagePath,
-                fit: BoxFit.cover,
+                fit: BoxFit.contain,
+                width: double.infinity,
                 errorBuilder: (context, error, stackTrace) {
-                  return Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      const Icon(Icons.image_not_supported,
-                          color: Colors.grey, size: 40),
-                      const SizedBox(height: 8),
-                      Text(
-                        label,
-                        style: TextStyle(color: Colors.grey[600], fontSize: 12),
-                      ),
-                    ],
+                  return Container(
+                    height: 120,
+                    alignment: Alignment.center,
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        const Icon(Icons.image_not_supported,
+                            color: Colors.grey, size: 40),
+                        const SizedBox(height: 8),
+                        Text(
+                          label,
+                          style:
+                              TextStyle(color: Colors.grey[600], fontSize: 12),
+                        ),
+                      ],
+                    ),
                   );
                 },
               ),
