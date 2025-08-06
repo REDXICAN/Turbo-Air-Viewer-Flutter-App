@@ -15,7 +15,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
   final _companyController = TextEditingController();
-  
+
   bool _isLoading = false;
   bool _isSignUp = false;
 
@@ -29,36 +29,42 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
 
   Future<void> _handleAuth() async {
     if (!_formKey.currentState!.validate()) return;
-    
+
     setState(() => _isLoading = true);
-    
+
     try {
       final authService = ref.read(authServiceProvider);
-      
+
       if (_isSignUp) {
         await authService.signUp(
           email: _emailController.text,
           password: _passwordController.text,
           company: _companyController.text,
         );
-        
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Account created! Please check your email to verify.')),
-        );
+
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+                content: Text(
+                    'Account created! Please check your email to verify.')),
+          );
+        }
       } else {
         await authService.signIn(
           email: _emailController.text,
           password: _passwordController.text,
         );
-        
+
         if (mounted) {
           context.go('/');
         }
       }
     } catch (error) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error: $error')),
-      );
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error: $error')),
+        );
+      }
     } finally {
       if (mounted) {
         setState(() => _isLoading = false);
@@ -96,7 +102,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                       },
                     ),
                     const SizedBox(height: 48),
-                    
+
                     // Title
                     Text(
                       _isSignUp ? 'Create Account' : 'Welcome Back',
@@ -104,15 +110,15 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                     ),
                     const SizedBox(height: 8),
                     Text(
-                      _isSignUp 
-                        ? 'Sign up to access the equipment catalog'
-                        : 'Sign in to your account',
+                      _isSignUp
+                          ? 'Sign up to access the equipment catalog'
+                          : 'Sign in to your account',
                       style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                        color: Colors.grey[600],
-                      ),
+                            color: Colors.grey[600],
+                          ),
                     ),
                     const SizedBox(height: 32),
-                    
+
                     // Email field
                     TextFormField(
                       controller: _emailController,
@@ -132,7 +138,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                       },
                     ),
                     const SizedBox(height: 16),
-                    
+
                     // Password field
                     TextFormField(
                       controller: _passwordController,
@@ -151,7 +157,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                         return null;
                       },
                     ),
-                    
+
                     // Company field (signup only)
                     if (_isSignUp) ...[
                       const SizedBox(height: 16),
@@ -163,9 +169,9 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                         ),
                       ),
                     ],
-                    
+
                     const SizedBox(height: 24),
-                    
+
                     // Submit button
                     SizedBox(
                       width: double.infinity,
@@ -177,20 +183,21 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                           foregroundColor: Colors.white,
                         ),
                         child: _isLoading
-                          ? const SizedBox(
-                              height: 20,
-                              width: 20,
-                              child: CircularProgressIndicator(
-                                strokeWidth: 2,
-                                valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
-                              ),
-                            )
-                          : Text(_isSignUp ? 'Sign Up' : 'Sign In'),
+                            ? const SizedBox(
+                                height: 20,
+                                width: 20,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                  valueColor: AlwaysStoppedAnimation<Color>(
+                                      Colors.white),
+                                ),
+                              )
+                            : Text(_isSignUp ? 'Sign Up' : 'Sign In'),
                       ),
                     ),
-                    
+
                     const SizedBox(height: 16),
-                    
+
                     // Toggle sign up/sign in
                     TextButton(
                       onPressed: () {
@@ -200,8 +207,8 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                       },
                       child: Text(
                         _isSignUp
-                          ? 'Already have an account? Sign In'
-                          : "Don't have an account? Sign Up",
+                            ? 'Already have an account? Sign In'
+                            : "Don't have an account? Sign Up",
                       ),
                     ),
                   ],

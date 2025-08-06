@@ -3,7 +3,7 @@ import 'package:go_router/go_router.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../features/auth/presentation/screens/login_screen.dart';
 import '../../features/auth/presentation/screens/splash_screen.dart';
-import '../../home_screen.dart';
+import '../../features/home/home_screen.dart';
 
 class AppRouter {
   static final GoRouter router = GoRouter(
@@ -11,15 +11,15 @@ class AppRouter {
     redirect: (context, state) {
       final session = Supabase.instance.client.auth.currentSession;
       final isLoggingIn = state.matchedLocation == '/login';
-      
+
       if (session == null && !isLoggingIn) {
         return '/login';
       }
-      
+
       if (session != null && isLoggingIn) {
         return '/';
       }
-      
+
       return null;
     },
     routes: [

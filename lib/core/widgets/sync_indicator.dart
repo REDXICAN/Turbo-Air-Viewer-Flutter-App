@@ -12,11 +12,11 @@ class SyncIndicator extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final connectivity = ref.watch(connectivityProvider);
-    
+
     return connectivity.when(
       data: (result) {
         final isOnline = result != ConnectivityResult.none;
-        
+
         return Container(
           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
           decoration: BoxDecoration(

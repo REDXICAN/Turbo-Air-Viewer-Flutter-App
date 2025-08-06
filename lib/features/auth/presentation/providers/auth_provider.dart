@@ -14,21 +14,18 @@ final authStateProvider = StreamProvider<User?>((ref) {
 final currentUserProvider = FutureProvider<UserProfile?>((ref) async {
   final user = ref.watch(authStateProvider).valueOrNull;
   if (user == null) return null;
-  
+
   final supabase = ref.watch(supabaseProvider);
-  final response = await supabase
-      .from('user_profiles')
-      .select()
-      .eq('id', user.id)
-      .single();
-  
+  final response =
+      await supabase.from('user_profiles').select().eq('id', user.id).single();
+
   return UserProfile.fromJson(response);
 });
 
 final cartItemCountProvider = StreamProvider<int>((ref) {
   final user = ref.watch(authStateProvider).valueOrNull;
   if (user == null) return Stream.value(0);
-  
+
   final supabase = ref.watch(supabaseProvider);
   return supabase
       .from('cart_items')
@@ -40,42 +37,36 @@ final cartItemCountProvider = StreamProvider<int>((ref) {
 final totalClientsProvider = FutureProvider<int>((ref) async {
   final user = ref.watch(authStateProvider).valueOrNull;
   if (user == null) return 0;
-  
+
   final supabase = ref.watch(supabaseProvider);
-  final response = await supabase
-      .from('clients')
-      .select('id', const FetchOptions(count: CountOption.exact))
-      .eq('user_id', user.id);
-  
-  return response.count ?? 0;
+  final response =
+      await supabase.from('clients').select('id').eq('user_id', user.id);
+
+  return (response as List).length;
 });
 
 final totalQuotesProvider = FutureProvider<int>((ref) async {
   final user = ref.watch(authStateProvider).valueOrNull;
   if (user == null) return 0;
-  
+
   final supabase = ref.watch(supabaseProvider);
-  final response = await supabase
-      .from('quotes')
-      .select('id', const FetchOptions(count: CountOption.exact))
-      .eq('user_id', user.id);
-  
-  return response.count ?? 0;
+  final response =
+      await supabase.from('quotes').select('id').eq('user_id', user.id);
+
+  return (response as List).length;
 });
 
 final totalProductsProvider = FutureProvider<int>((ref) async {
   final supabase = ref.watch(supabaseProvider);
-  final response = await supabase
-      .from('products')
-      .select('id', const FetchOptions(count: CountOption.exact));
-  
-  return response.count ?? 0;
+  final response = await supabase.from('products').select('id');
+
+  return (response as List).length;
 });
 
 final recentQuotesProvider = FutureProvider<List<Quote>>((ref) async {
   final user = ref.watch(authStateProvider).valueOrNull;
   if (user == null) return [];
-  
+
   final supabase = ref.watch(supabaseProvider);
   final response = await supabase
       .from('quotes')
@@ -83,14 +74,14 @@ final recentQuotesProvider = FutureProvider<List<Quote>>((ref) async {
       .eq('user_id', user.id)
       .order('created_at', ascending: false)
       .limit(5);
-  
+
   return (response as List).map((json) => Quote.fromJson(json)).toList();
 });
 
 final recentSearchesProvider = FutureProvider<List<String>>((ref) async {
   final user = ref.watch(authStateProvider).valueOrNull;
   if (user == null) return [];
-  
+
   final supabase = ref.watch(supabaseProvider);
   final response = await supabase
       .from('search_history')
@@ -98,15 +89,17 @@ final recentSearchesProvider = FutureProvider<List<String>>((ref) async {
       .eq('user_id', user.id)
       .order('created_at', ascending: false)
       .limit(10);
-  
-  return (response as List).map((item) => item['search_term'] as String).toList();
+
+  return (response as List)
+      .map((item) => item['search_term'] as String)
+      .toList();
 });
 
 class AuthService {
   final SupabaseClient _supabase;
-  
+
   AuthService(this._supabase);
-  
+
   Future<AuthResponse> signUp({
     required String email,
     required String password,
@@ -117,14 +110,14 @@ class AuthService {
       password: password,
       data: {'company': company},
     );
-    
+
     if (response.user != null) {
       // Profile will be created automatically by database trigger
     }
-    
+
     return response;
   }
-  
+
   Future<AuthResponse> signIn({
     required String email,
     required String password,
@@ -134,11 +127,11 @@ class AuthService {
       password: password,
     );
   }
-  
+
   Future<void> signOut() async {
     await _supabase.auth.signOut();
   }
-  
+
   Future<void> resetPassword(String email) async {
     await _supabase.auth.resetPasswordForEmail(email);
   }
