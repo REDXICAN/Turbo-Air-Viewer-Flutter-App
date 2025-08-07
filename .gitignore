@@ -121,6 +121,7 @@ lib/generated_plugin_registrant.dart
 turbo_air_products.xlsx
 scripts/*.xlsx
 scripts/*.csv
+setupSuperAdmin.js
 
 # Firebase Service Account Keys
 scripts/serviceAccountKey.json
