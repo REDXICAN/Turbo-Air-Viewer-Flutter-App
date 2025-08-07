@@ -121,7 +121,7 @@ lib/generated_plugin_registrant.dart
 turbo_air_products.xlsx
 scripts/*.xlsx
 scripts/*.csv
-setupSuperAdmin.js
+
 
 # Firebase Service Account Keys
 scripts/serviceAccountKey.json
@@ -129,6 +129,7 @@ scripts/serviceAccountKey.json
 **/service-account-key.json
 **/*-service-account.json
 firebase-service-account.json
+**/setupSuperAdmin.js
 
 # Firebase Configuration
 lib/firebase_options.dart
