@@ -3,6 +3,8 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../features/auth/presentation/screens/login_screen.dart';
+import '../../features/home/home_screen.dart';
+import '../../features/products/presentation/products_screen.dart';
 import '../../features/profile/presentation/screens/profile_screen.dart';
 import '../../features/admin/presentation/screens/admin_panel_screen.dart';
 import '../../features/cart/presentation/screens/cart_screen.dart';
@@ -45,11 +47,11 @@ class AppRouter {
           routes: [
             GoRoute(
               path: '/',
-              builder: (context, state) => const _HomeScreen(),
+              builder: (context, state) => const HomeScreen(),
             ),
             GoRoute(
               path: '/products',
-              builder: (context, state) => const _ProductsScreen(),
+              builder: (context, state) => const ProductsScreen(),
             ),
             GoRoute(
               path: '/cart',
@@ -84,31 +86,6 @@ final routerProvider = Provider<GoRouter>((ref) {
   return AppRouter.router;
 });
 
-// Temporary placeholder screens
-class _HomeScreen extends StatelessWidget {
-  const _HomeScreen();
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(title: const Text('Home')),
-      body: const Center(child: Text('Home Screen')),
-    );
-  }
-}
-
-class _ProductsScreen extends StatelessWidget {
-  const _ProductsScreen();
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(title: const Text('Products')),
-      body: const Center(child: Text('Products Screen')),
-    );
-  }
-}
-
 // Main Navigation Shell with Bottom Navigation Bar
 class MainNavigationShell extends ConsumerStatefulWidget {
   final Widget child;
@@ -124,8 +101,6 @@ class MainNavigationShell extends ConsumerStatefulWidget {
 }
 
 class _MainNavigationShellState extends ConsumerState<MainNavigationShell> {
-  int _selectedIndex = 0;
-
   final List<String> _routes = [
     '/',
     '/products',
@@ -135,22 +110,44 @@ class _MainNavigationShellState extends ConsumerState<MainNavigationShell> {
     '/profile',
   ];
 
+  int _calculateSelectedIndex(String location) {
+    // Handle root path
+    if (location == '/') return 0;
+
+    // Find matching route
+    for (int i = 0; i < _routes.length; i++) {
+      if (location.startsWith(_routes[i]) && _routes[i] != '/') {
+        return i;
+      }
+    }
+
+    // Check for admin route
+    if (location.startsWith('/admin')) {
+      return _routes.length; // Admin is always last
+    }
+
+    return 0; // Default to home
+  }
+
   @override
   Widget build(BuildContext context) {
     final currentUser = ref.watch(currentUserProvider);
     final isAdmin = currentUser.valueOrNull?.isAdmin ?? false;
+    final currentLocation = GoRouterState.of(context).uri.toString();
+    final cartItemCountAsync = ref.watch(cartItemCountProvider);
+    final cartItemCount = cartItemCountAsync.valueOrNull ?? 0;
 
     // Update routes if admin
     final routes = isAdmin ? [..._routes, '/admin'] : _routes;
 
+    // Calculate selected index based on current location
+    final selectedIndex = _calculateSelectedIndex(currentLocation);
+
     return Scaffold(
       body: widget.child,
       bottomNavigationBar: NavigationBar(
-        selectedIndex: _selectedIndex,
+        selectedIndex: selectedIndex,
         onDestinationSelected: (index) {
-          setState(() {
-            _selectedIndex = index;
-          });
           context.go(routes[index]);
         },
         destinations: [
@@ -164,9 +161,17 @@ class _MainNavigationShellState extends ConsumerState<MainNavigationShell> {
             selectedIcon: Icon(Icons.inventory_2),
             label: 'Products',
           ),
-          const NavigationDestination(
-            icon: Icon(Icons.shopping_cart_outlined),
-            selectedIcon: Icon(Icons.shopping_cart),
+          NavigationDestination(
+            icon: Badge(
+              label: Text('$cartItemCount'),
+              isLabelVisible: cartItemCount > 0,
+              child: const Icon(Icons.shopping_cart_outlined),
+            ),
+            selectedIcon: Badge(
+              label: Text('$cartItemCount'),
+              isLabelVisible: cartItemCount > 0,
+              child: const Icon(Icons.shopping_cart),
+            ),
             label: 'Cart',
           ),
           const NavigationDestination(
