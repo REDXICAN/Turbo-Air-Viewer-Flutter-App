@@ -34,20 +34,20 @@ class _QuotesScreenState extends ConsumerState<QuotesScreen> {
   @override
   Widget build(BuildContext context) {
     final quotesAsync = ref.watch(quotesProvider);
+    final theme = Theme.of(context);
 
     return Scaffold(
-      backgroundColor: Colors.grey[50],
       appBar: AppBar(
         title: const Text('Quotes'),
-        backgroundColor: const Color(0xFF20429C),
-        foregroundColor: Colors.white,
+        backgroundColor: theme.primaryColor,
+        foregroundColor: theme.appBarTheme.foregroundColor,
       ),
       body: Column(
         children: [
           // Search and filter bar
           Container(
             padding: const EdgeInsets.all(16),
-            color: Colors.white,
+            color: theme.cardColor,
             child: Column(
               children: [
                 // Search field
@@ -59,7 +59,7 @@ class _QuotesScreenState extends ConsumerState<QuotesScreen> {
                       borderRadius: BorderRadius.circular(8),
                     ),
                     filled: true,
-                    fillColor: Colors.grey[100],
+                    fillColor: theme.inputDecorationTheme.fillColor,
                   ),
                   onChanged: (value) {
                     setState(() {
@@ -120,13 +120,12 @@ class _QuotesScreenState extends ConsumerState<QuotesScreen> {
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
                         Icon(Icons.receipt_long_outlined,
-                            size: 80, color: Colors.grey[400]),
+                            size: 80,
+                            color: theme.iconTheme.color?.withOpacity(0.5)),
                         const SizedBox(height: 16),
-                        Text(
-                          _searchQuery.isNotEmpty || _filterStatus != 'all'
-                              ? 'No quotes found'
-                              : 'No quotes yet',
-                          style: const TextStyle(
+                        const Text(
+                          'No quotes found',
+                          style: TextStyle(
                               fontSize: 18, fontWeight: FontWeight.bold),
                         ),
                         const SizedBox(height: 8),
@@ -134,7 +133,6 @@ class _QuotesScreenState extends ConsumerState<QuotesScreen> {
                           _searchQuery.isNotEmpty || _filterStatus != 'all'
                               ? 'Try adjusting your filters'
                               : 'Create your first quote from the Cart',
-                          style: TextStyle(color: Colors.grey[600]),
                         ),
                       ],
                     ),
@@ -161,6 +159,7 @@ class _QuotesScreenState extends ConsumerState<QuotesScreen> {
 
   Widget _buildFilterChip(String label, String value) {
     final isSelected = _filterStatus == value;
+    final theme = Theme.of(context);
 
     return FilterChip(
       label: Text(label),
@@ -170,15 +169,16 @@ class _QuotesScreenState extends ConsumerState<QuotesScreen> {
           _filterStatus = value;
         });
       },
-      backgroundColor: Colors.grey[200],
-      selectedColor: const Color(0xFF20429C).withOpacity(0.2),
-      checkmarkColor: const Color(0xFF20429C),
+      backgroundColor: theme.chipTheme.backgroundColor,
+      selectedColor: theme.primaryColor.withOpacity(0.2),
+      checkmarkColor: theme.primaryColor,
     );
   }
 
   Widget _buildQuoteCard(Quote quote) {
     final dateFormat = DateFormat('MMM dd, yyyy');
     final statusColor = _getStatusColor(quote.status);
+    final theme = Theme.of(context);
 
     return Card(
       margin: const EdgeInsets.only(bottom: 12),
@@ -227,11 +227,10 @@ class _QuotesScreenState extends ConsumerState<QuotesScreen> {
               // Client info
               Row(
                 children: [
-                  const Icon(Icons.business, size: 16, color: Colors.grey),
+                  Icon(Icons.business, size: 16, color: theme.iconTheme.color),
                   const SizedBox(width: 4),
                   Text(
                     quote.client?.company ?? 'Unknown Client',
-                    style: TextStyle(color: Colors.grey[700]),
                   ),
                 ],
               ),
@@ -240,12 +239,11 @@ class _QuotesScreenState extends ConsumerState<QuotesScreen> {
               // Date
               Row(
                 children: [
-                  const Icon(Icons.calendar_today,
-                      size: 16, color: Colors.grey),
+                  Icon(Icons.calendar_today,
+                      size: 16, color: theme.iconTheme.color),
                   const SizedBox(width: 4),
                   Text(
                     dateFormat.format(quote.createdAt),
-                    style: TextStyle(color: Colors.grey[700]),
                   ),
                 ],
               ),
@@ -257,14 +255,13 @@ class _QuotesScreenState extends ConsumerState<QuotesScreen> {
                 children: [
                   Text(
                     '${quote.items.length} items',
-                    style: TextStyle(color: Colors.grey[600]),
                   ),
                   Text(
                     '\$${quote.totalAmount.toStringAsFixed(2)}',
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontSize: 18,
                       fontWeight: FontWeight.bold,
-                      color: Color(0xFF20429C),
+                      color: theme.primaryColor,
                     ),
                   ),
                 ],
@@ -338,15 +335,17 @@ class _QuotesScreenState extends ConsumerState<QuotesScreen> {
   }
 
   void _showQuoteDetails(Quote quote) {
+    final theme = Theme.of(context);
+
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
       builder: (context) => Container(
         height: MediaQuery.of(context).size.height * 0.8,
-        decoration: const BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.only(
+        decoration: BoxDecoration(
+          color: theme.cardColor,
+          borderRadius: const BorderRadius.only(
             topLeft: Radius.circular(20),
             topRight: Radius.circular(20),
           ),
@@ -359,7 +358,7 @@ class _QuotesScreenState extends ConsumerState<QuotesScreen> {
               height: 4,
               margin: const EdgeInsets.symmetric(vertical: 12),
               decoration: BoxDecoration(
-                color: Colors.grey[300],
+                color: theme.dividerColor,
                 borderRadius: BorderRadius.circular(2),
               ),
             ),
@@ -434,9 +433,7 @@ class _QuotesScreenState extends ConsumerState<QuotesScreen> {
                                         ),
                                         Text(
                                           '${item.quantity} × \$${item.unitPrice.toStringAsFixed(2)}',
-                                          style: TextStyle(
-                                              color: Colors.grey[600],
-                                              fontSize: 12),
+                                          style: const TextStyle(fontSize: 12),
                                         ),
                                       ],
                                     ),
@@ -459,7 +456,7 @@ class _QuotesScreenState extends ConsumerState<QuotesScreen> {
                   Container(
                     padding: const EdgeInsets.all(16),
                     decoration: BoxDecoration(
-                      color: Colors.grey[100],
+                      color: theme.inputDecorationTheme.fillColor,
                       borderRadius: BorderRadius.circular(8),
                     ),
                     child: Column(

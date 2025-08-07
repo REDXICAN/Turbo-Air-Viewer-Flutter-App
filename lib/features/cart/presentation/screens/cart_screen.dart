@@ -50,13 +50,13 @@ class _CartScreenState extends ConsumerState<CartScreen> {
   Widget build(BuildContext context) {
     final cartAsync = ref.watch(cartProvider);
     final selectedClient = ref.watch(cartClientProvider);
+    final theme = Theme.of(context);
 
     return Scaffold(
-      backgroundColor: Colors.grey[50],
       appBar: AppBar(
         title: const Text('Cart'),
-        backgroundColor: const Color(0xFF20429C),
-        foregroundColor: Colors.white,
+        backgroundColor: theme.primaryColor,
+        foregroundColor: theme.appBarTheme.foregroundColor,
         actions: [
           IconButton(
             icon: const Icon(Icons.delete_sweep),
@@ -73,11 +73,11 @@ class _CartScreenState extends ConsumerState<CartScreen> {
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   Icon(Icons.shopping_cart_outlined,
-                      size: 80, color: Colors.grey[400]),
+                      size: 80, color: theme.iconTheme.color?.withOpacity(0.5)),
                   const SizedBox(height: 16),
-                  Text(
+                  const Text(
                     'Your cart is empty',
-                    style: TextStyle(fontSize: 18, color: Colors.grey[600]),
+                    style: TextStyle(fontSize: 18),
                   ),
                   const SizedBox(height: 8),
                   const Text('Add products to get started'),
@@ -96,7 +96,7 @@ class _CartScreenState extends ConsumerState<CartScreen> {
               // Client selector
               Container(
                 padding: const EdgeInsets.all(16),
-                color: Colors.white,
+                color: theme.cardColor,
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
@@ -108,7 +108,7 @@ class _CartScreenState extends ConsumerState<CartScreen> {
                     const SizedBox(height: 8),
                     if (selectedClient != null)
                       Card(
-                        color: Colors.green[50],
+                        color: Colors.green.withOpacity(0.1),
                         child: ListTile(
                           leading: const Icon(Icons.check_circle,
                               color: Colors.green),
@@ -151,10 +151,10 @@ class _CartScreenState extends ConsumerState<CartScreen> {
               Container(
                 padding: const EdgeInsets.all(16),
                 decoration: BoxDecoration(
-                  color: Colors.white,
+                  color: theme.cardColor,
                   boxShadow: [
                     BoxShadow(
-                      color: Colors.grey.withOpacity(0.2),
+                      color: theme.shadowColor.withOpacity(0.2),
                       spreadRadius: 1,
                       blurRadius: 5,
                       offset: const Offset(0, -3),
@@ -205,13 +205,13 @@ class _CartScreenState extends ConsumerState<CartScreen> {
                                 ? () => _createQuote(cartItems, selectedClient)
                                 : null,
                             icon: _isCreatingQuote
-                                ? const SizedBox(
+                                ? SizedBox(
                                     width: 16,
                                     height: 16,
                                     child: CircularProgressIndicator(
                                       strokeWidth: 2,
                                       valueColor: AlwaysStoppedAnimation<Color>(
-                                          Colors.white),
+                                          theme.colorScheme.onPrimary),
                                     ),
                                   )
                                 : const Icon(Icons.receipt),
@@ -219,8 +219,8 @@ class _CartScreenState extends ConsumerState<CartScreen> {
                                 ? 'Creating...'
                                 : 'Create Quote'),
                             style: ElevatedButton.styleFrom(
-                              backgroundColor: const Color(0xFF20429C),
-                              foregroundColor: Colors.white,
+                              backgroundColor: theme.primaryColor,
+                              foregroundColor: theme.colorScheme.onPrimary,
                               padding: const EdgeInsets.symmetric(vertical: 12),
                             ),
                           ),
@@ -240,6 +240,8 @@ class _CartScreenState extends ConsumerState<CartScreen> {
   }
 
   Widget _buildCartItem(CartItem item) {
+    final theme = Theme.of(context);
+
     return Card(
       margin: const EdgeInsets.only(bottom: 12),
       child: Padding(
@@ -267,12 +269,12 @@ class _CartScreenState extends ConsumerState<CartScreen> {
                   if (item.product?.productType != null)
                     Text(
                       item.product!.productType!,
-                      style: TextStyle(color: Colors.grey[600], fontSize: 12),
+                      style: const TextStyle(fontSize: 12),
                     ),
                   Text(
                     '\$${(item.product?.price ?? 0).toStringAsFixed(2)}',
-                    style: const TextStyle(
-                      color: Color(0xFF20429C),
+                    style: TextStyle(
+                      color: theme.primaryColor,
                       fontWeight: FontWeight.bold,
                     ),
                   ),
@@ -314,6 +316,8 @@ class _CartScreenState extends ConsumerState<CartScreen> {
   }
 
   Widget _buildSummaryRow(String label, double value, {bool isBold = false}) {
+    final theme = Theme.of(context);
+
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 4),
       child: Row(
@@ -331,7 +335,7 @@ class _CartScreenState extends ConsumerState<CartScreen> {
             style: TextStyle(
               fontWeight: isBold ? FontWeight.bold : FontWeight.normal,
               fontSize: isBold ? 18 : 14,
-              color: isBold ? const Color(0xFF20429C) : null,
+              color: isBold ? theme.primaryColor : null,
             ),
           ),
         ],
@@ -615,12 +619,13 @@ class ClientSelectorScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final clientsAsync = ref.watch(clientsProvider);
+    final theme = Theme.of(context);
 
     return Scaffold(
       appBar: AppBar(
         title: const Text('Select Client'),
-        backgroundColor: const Color(0xFF20429C),
-        foregroundColor: Colors.white,
+        backgroundColor: theme.primaryColor,
+        foregroundColor: theme.appBarTheme.foregroundColor,
       ),
       body: clientsAsync.when(
         data: (clients) => ListView.builder(

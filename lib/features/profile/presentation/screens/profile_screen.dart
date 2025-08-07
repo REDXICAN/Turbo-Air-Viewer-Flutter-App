@@ -44,18 +44,18 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
     final isDarkMode = themeMode == ThemeMode.dark ||
         (themeMode == ThemeMode.system &&
             MediaQuery.of(context).platformBrightness == Brightness.dark);
+    final theme = Theme.of(context);
 
     // Add admin checks
     final isAdmin = currentUser.valueOrNull?.isAdmin ?? false;
     final isSuperAdmin = currentUser.valueOrNull?.role == 'superadmin';
 
     return Scaffold(
-      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
+      backgroundColor: theme.scaffoldBackgroundColor,
       appBar: AppBar(
         title: const Text('Profile & Settings'),
-        backgroundColor:
-            isDarkMode ? Colors.grey[900] : const Color(0xFF20429C),
-        foregroundColor: Colors.white,
+        backgroundColor: theme.primaryColor,
+        foregroundColor: theme.appBarTheme.foregroundColor,
         actions: [
           // Add admin panel quick access
           if (isAdmin)
@@ -231,16 +231,16 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                                       : 'View system users',
                                   style: TextStyle(
                                     fontSize: 14,
-                                    color: Colors.grey[600],
+                                    color: theme.textTheme.bodySmall?.color,
                                   ),
                                 ),
                               ],
                             ),
                           ),
-                          const Icon(
+                          Icon(
                             Icons.arrow_forward_ios,
                             size: 16,
-                            color: Colors.grey,
+                            color: theme.iconTheme.color,
                           ),
                         ],
                       ),
@@ -474,7 +474,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                       Text(
                         '© 2024 Turbo Air',
                         style: TextStyle(
-                          color: Colors.grey[600],
+                          color: theme.textTheme.bodySmall?.color,
                           fontSize: 12,
                         ),
                       ),
@@ -490,6 +490,8 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
   }
 
   Widget _buildInfoRow(String label, String value) {
+    final theme = Theme.of(context);
+
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 4),
       child: Row(
@@ -498,7 +500,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
           Text(
             label,
             style: TextStyle(
-              color: Colors.grey[600],
+              color: theme.textTheme.bodySmall?.color,
               fontSize: 14,
             ),
           ),

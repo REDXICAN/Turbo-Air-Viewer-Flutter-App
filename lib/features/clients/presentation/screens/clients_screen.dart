@@ -45,13 +45,13 @@ class _ClientsScreenState extends ConsumerState<ClientsScreen> {
   Widget build(BuildContext context) {
     final clientsAsync = ref.watch(clientsProvider);
     final selectedClient = ref.watch(selectedClientProvider);
+    final theme = Theme.of(context);
 
     return Scaffold(
-      backgroundColor: Colors.grey[50],
       appBar: AppBar(
         title: const Text('Clients'),
-        backgroundColor: const Color(0xFF20429C),
-        foregroundColor: Colors.white,
+        backgroundColor: theme.primaryColor,
+        foregroundColor: theme.appBarTheme.foregroundColor,
         actions: [
           IconButton(
             icon: const Icon(Icons.add),
@@ -97,7 +97,7 @@ class _ClientsScreenState extends ConsumerState<ClientsScreen> {
           if (_showAddForm)
             Container(
               padding: const EdgeInsets.all(16),
-              color: Colors.white,
+              color: theme.cardColor,
               child: Form(
                 key: _formKey,
                 child: Column(
@@ -169,8 +169,8 @@ class _ClientsScreenState extends ConsumerState<ClientsScreen> {
                           child: ElevatedButton(
                             onPressed: _saveClient,
                             style: ElevatedButton.styleFrom(
-                              backgroundColor: const Color(0xFF20429C),
-                              foregroundColor: Colors.white,
+                              backgroundColor: theme.primaryColor,
+                              foregroundColor: theme.colorScheme.onPrimary,
                             ),
                             child: const Text('Save Client'),
                           ),
@@ -206,15 +206,12 @@ class _ClientsScreenState extends ConsumerState<ClientsScreen> {
                         Icon(
                           Icons.people_outline,
                           size: 80,
-                          color: Colors.grey[400],
+                          color: theme.iconTheme.color?.withOpacity(0.5),
                         ),
                         const SizedBox(height: 16),
-                        Text(
+                        const Text(
                           'No clients yet',
-                          style: TextStyle(
-                            fontSize: 18,
-                            color: Colors.grey[600],
-                          ),
+                          style: TextStyle(fontSize: 18),
                         ),
                         const SizedBox(height: 8),
                         const Text('Add a client to get started'),
@@ -228,8 +225,8 @@ class _ClientsScreenState extends ConsumerState<ClientsScreen> {
                           icon: const Icon(Icons.add),
                           label: const Text('Add First Client'),
                           style: ElevatedButton.styleFrom(
-                            backgroundColor: const Color(0xFF20429C),
-                            foregroundColor: Colors.white,
+                            backgroundColor: theme.primaryColor,
+                            foregroundColor: theme.colorScheme.onPrimary,
                           ),
                         ),
                       ],
@@ -247,17 +244,20 @@ class _ClientsScreenState extends ConsumerState<ClientsScreen> {
                     return Card(
                       elevation: isSelected ? 4 : 1,
                       margin: const EdgeInsets.only(bottom: 12),
-                      color: isSelected ? Colors.blue[50] : null,
+                      color: isSelected
+                          ? theme.primaryColor.withOpacity(0.1)
+                          : null,
                       child: ListTile(
                         leading: CircleAvatar(
                           backgroundColor: isSelected
-                              ? const Color(0xFF20429C)
-                              : Colors.grey[300],
+                              ? theme.primaryColor
+                              : theme.dividerColor,
                           child: Text(
                             client.company[0].toUpperCase(),
                             style: TextStyle(
-                              color:
-                                  isSelected ? Colors.white : Colors.grey[700],
+                              color: isSelected
+                                  ? theme.colorScheme.onPrimary
+                                  : theme.textTheme.bodyLarge?.color,
                               fontWeight: FontWeight.bold,
                             ),
                           ),
@@ -409,6 +409,7 @@ class _ClientsScreenState extends ConsumerState<ClientsScreen> {
   }
 
   void _editClient(Client client) {
+    final theme = Theme.of(context);
     _companyController.text = client.company;
     _contactNameController.text = client.contactName ?? '';
     _emailController.text = client.contactEmail ?? '';
@@ -531,8 +532,8 @@ class _ClientsScreenState extends ConsumerState<ClientsScreen> {
               }
             },
             style: ElevatedButton.styleFrom(
-              backgroundColor: const Color(0xFF20429C),
-              foregroundColor: Colors.white,
+              backgroundColor: theme.primaryColor,
+              foregroundColor: theme.colorScheme.onPrimary,
             ),
             child: const Text('Update'),
           ),

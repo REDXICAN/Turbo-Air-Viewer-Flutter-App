@@ -43,20 +43,20 @@ class _ProductsScreenState extends ConsumerState<ProductsScreen> {
   @override
   Widget build(BuildContext context) {
     final searchQuery = ref.watch(searchQueryProvider);
+    final theme = Theme.of(context);
 
     return Scaffold(
-      backgroundColor: Colors.grey[50],
       appBar: AppBar(
         title: const Text('Products'),
-        backgroundColor: const Color(0xFF20429C),
-        foregroundColor: Colors.white,
+        backgroundColor: theme.primaryColor,
+        foregroundColor: theme.appBarTheme.foregroundColor,
         elevation: 0,
       ),
       body: Column(
         children: [
           // Search Bar
           Container(
-            color: const Color(0xFF20429C),
+            color: theme.primaryColor,
             padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
             child: TextField(
               controller: _searchController,
@@ -64,7 +64,7 @@ class _ProductsScreenState extends ConsumerState<ProductsScreen> {
                 hintText: 'Search by SKU, category or description',
                 prefixIcon: const Icon(Icons.search),
                 filled: true,
-                fillColor: Colors.white,
+                fillColor: theme.cardColor,
                 border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(12),
                   borderSide: BorderSide.none,
@@ -226,6 +226,8 @@ class _ProductsScreenState extends ConsumerState<ProductsScreen> {
   }
 
   Widget _buildProductItem(Product product) {
+    final theme = Theme.of(context);
+
     return Card(
       margin: const EdgeInsets.only(bottom: 12),
       child: ExpansionTile(
@@ -243,12 +245,12 @@ class _ProductsScreenState extends ConsumerState<ProductsScreen> {
             if (product.productType != null)
               Text(
                 product.productType!,
-                style: TextStyle(color: Colors.grey[600], fontSize: 12),
+                style: const TextStyle(fontSize: 12),
               ),
             Text(
               '\$${product.price?.toStringAsFixed(2) ?? '0.00'}',
-              style: const TextStyle(
-                color: Color(0xFF20429C),
+              style: TextStyle(
+                color: theme.primaryColor,
                 fontWeight: FontWeight.bold,
                 fontSize: 16,
               ),
@@ -324,8 +326,8 @@ class _ProductsScreenState extends ConsumerState<ProductsScreen> {
                     icon: const Icon(Icons.add_shopping_cart),
                     label: const Text('Add to Cart'),
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color(0xFF20429C),
-                      foregroundColor: Colors.white,
+                      backgroundColor: theme.primaryColor,
+                      foregroundColor: theme.colorScheme.onPrimary,
                       padding: const EdgeInsets.symmetric(vertical: 12),
                     ),
                   ),
