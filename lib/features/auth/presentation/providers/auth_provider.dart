@@ -5,8 +5,8 @@ import '../../../../core/services/firebase_auth_service.dart';
 import '../../../../core/services/firestore_service.dart';
 import '../../../../core/models/models.dart';
 
-// Firebase Auth Service Provider
-final firebaseAuthServiceProvider = Provider<FirebaseAuthService>((ref) {
+// Auth Service Provider - CORRECTED
+final authServiceProvider = Provider<FirebaseAuthService>((ref) {
   return FirebaseAuthService();
 });
 
@@ -17,7 +17,7 @@ final firestoreServiceProvider = Provider<FirestoreService>((ref) {
 
 // Auth State Provider
 final authStateProvider = StreamProvider<User?>((ref) {
-  final authService = ref.watch(firebaseAuthServiceProvider);
+  final authService = ref.watch(authServiceProvider);
   return authService.authStateChanges;
 });
 
@@ -26,7 +26,7 @@ final currentUserProvider = FutureProvider<UserProfile?>((ref) async {
   final user = ref.watch(authStateProvider).valueOrNull;
   if (user == null) return null;
 
-  final authService = ref.watch(firebaseAuthServiceProvider);
+  final authService = ref.watch(authServiceProvider);
   final profileData = await authService.getUserProfile(user.uid);
 
   if (profileData == null) return null;
@@ -38,8 +38,6 @@ final currentUserProvider = FutureProvider<UserProfile?>((ref) async {
 final cartItemCountProvider = StreamProvider<int>((ref) {
   final user = ref.watch(authStateProvider).valueOrNull;
   if (user == null) return Stream.value(0);
-
-  final firestoreService = ref.watch(firestoreServiceProvider);
 
   return FirebaseFirestore.instance
       .collection('cart_items')

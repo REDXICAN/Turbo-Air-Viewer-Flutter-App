@@ -80,7 +80,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                       const SizedBox(height: 16),
                       _buildInfoRow('Email', user?.email ?? 'N/A'),
                       _buildInfoRow(
-                          'User ID', user?.id.substring(0, 8) ?? 'N/A'),
+                          'User ID', user?.uid.substring(0, 8) ?? 'N/A'),
                       _buildInfoRow(
                           'Role',
                           currentUser.valueOrNull?.role.toUpperCase() ??
