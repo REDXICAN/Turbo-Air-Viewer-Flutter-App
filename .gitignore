@@ -117,6 +117,11 @@ lib/generated_plugin_registrant.dart
 .env.development
 !.env.example
 
+# Product data files
+turbo_air_products.xlsx
+scripts/*.xlsx
+scripts/*.csv
+
 # Firebase Service Account Keys
 scripts/serviceAccountKey.json
 **/serviceAccountKey.json
