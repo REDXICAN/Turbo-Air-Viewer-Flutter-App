@@ -130,6 +130,7 @@ scripts/serviceAccountKey.json
 **/*-service-account.json
 firebase-service-account.json
 **/setupSuperAdmin.js
+setupSuperAdmin.js
 
 # Firebase Configuration
 lib/firebase_options.dart
