@@ -96,50 +96,106 @@ coverage/
 # Web related
 lib/generated_plugin_registrant.dart
 
-# Symbolication related
-app.*.symbols
-
-# Obfuscation related
-app.*.map.json
-
-# Environment files (keep these secret!)
-.env
-.env.*
-
-# Temporary files
-*.tmp
-*.temp
-*.log
-
 # Generated files
 *.g.dart
 *.freezed.dart
 *.mocks.dart
 
+# Temporary files
+*.tmp
+*.temp
+
+# ============================================
+# SENSITIVE FILES - NEVER COMMIT THESE
+# ============================================
+
+# Environment variables
 .env
 .env.*
+.env.local
+.env.production
+.env.development
 !.env.example
 
-# Config files with secrets
-lib/core/config/app_config_secrets.dart
-config.dev.dart
-# Add this line to .gitignore
-lib/core/config/env_config.dart
-env_config.dart
+# Firebase Service Account Keys
+scripts/serviceAccountKey.json
+**/serviceAccountKey.json
+**/service-account-key.json
+**/*-service-account.json
+firebase-service-account.json
 
-# Firebase configuration files
+# Firebase Configuration
 lib/firebase_options.dart
 ios/firebase_app_id_file.json
 android/app/google-services.json
 ios/Runner/GoogleService-Info.plist
 macos/Runner/GoogleService-Info.plist
+web/firebase-config.js
 
-# Environment configuration
+# Config files with secrets
+lib/core/config/app_config_secrets.dart
 lib/core/config/env_config.dart
+config.dev.dart
+config.prod.dart
 env_config.dart
+**/env_config.dart
 
-# Firebase emulator files
+# Firebase Emulator
 firebase-debug.log
 firestore-debug.log
 ui-debug.log
 firebase-export-*
+.firebase/
+
+# Database exports/backups
+*.sql
+*.sqlite
+*.db
+database_backup/
+database_exports/
+scripts/*.xlsx
+scripts/*.csv
+scripts/*.json
+!scripts/clearFirebase.js
+!scripts/importProducts.js
+
+# API Keys and Credentials
+api_keys.dart
+credentials.dart
+secrets.dart
+**/api_keys.dart
+**/credentials.dart
+**/secrets.dart
+
+# Node modules (if using scripts)
+node_modules/
+scripts/node_modules/
+scripts/package-lock.json
+scripts/package.json
+
+# Build outputs
+dist/
+out/
+release/
+
+# IDE and Editor
+.idea/
+*.sublime-*
+*.code-workspace
+
+# OS Files
+Thumbs.db
+Desktop.ini
+.Spotlight-V100
+.Trashes
+
+# Backup files
+*.backup
+*.bak
+*~
+.backup/
+
+# Private data
+private/
+confidential/
+sensitive/
