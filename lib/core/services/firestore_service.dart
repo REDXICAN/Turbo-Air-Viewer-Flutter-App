@@ -295,7 +295,7 @@ class FirestoreService {
     final snapshot = await _db
         .collection('products')
         .where('sku', isGreaterThanOrEqualTo: query.toUpperCase())
-        .where('sku', isLessThan: query.toUpperCase() + '\uf8ff')
+        .where('sku', isLessThan: '${query.toUpperCase()}\uf8ff')
         .limit(20)
         .get();
 

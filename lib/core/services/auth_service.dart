@@ -1,3 +1,5 @@
+// lib/core/services/auth_service.dart
+import 'package:flutter/foundation.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 
 class AuthService {
@@ -18,7 +20,7 @@ class AuthService {
       );
       return result.user;
     } catch (e) {
-      print('Sign up error: $e');
+      debugPrint('Sign up error: $e');
       return null;
     }
   }
@@ -32,7 +34,7 @@ class AuthService {
       );
       return result.user;
     } catch (e) {
-      print('Sign in error: $e');
+      debugPrint('Sign in error: $e');
       return null;
     }
   }
@@ -42,7 +44,7 @@ class AuthService {
     try {
       return await _auth.signOut();
     } catch (e) {
-      print('Sign out error: $e');
+      debugPrint('Sign out error: $e');
     }
   }
 }

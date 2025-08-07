@@ -1,7 +1,9 @@
+// lib/features/profile/presentation/screens/profile_screen.dart
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../../auth/presentation/providers/auth_provider.dart';
+import '../../../admin/presentation/screens/admin_panel_screen.dart';
 
 // Theme mode provider
 final themeModeProvider =
@@ -43,6 +45,10 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
         (themeMode == ThemeMode.system &&
             MediaQuery.of(context).platformBrightness == Brightness.dark);
 
+    // Add admin checks
+    final isAdmin = currentUser.valueOrNull?.isAdmin ?? false;
+    final isSuperAdmin = currentUser.valueOrNull?.role == 'superadmin';
+
     return Scaffold(
       backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       appBar: AppBar(
@@ -50,6 +56,24 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
         backgroundColor:
             isDarkMode ? Colors.grey[900] : const Color(0xFF20429C),
         foregroundColor: Colors.white,
+        actions: [
+          // Add admin panel quick access
+          if (isAdmin)
+            IconButton(
+              icon: const Icon(Icons.admin_panel_settings),
+              onPressed: () {
+                setState(() {
+                  // Navigate to admin panel
+                  Navigator.of(context).push(
+                    MaterialPageRoute(
+                      builder: (context) => const AdminPanelScreen(),
+                    ),
+                  );
+                });
+              },
+              tooltip: 'Admin Panel',
+            ),
+        ],
       ),
       body: SingleChildScrollView(
         child: Padding(
@@ -57,34 +81,74 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // User Information Card
+              // User Information Card - Enhanced with badges
               Card(
                 child: Padding(
                   padding: const EdgeInsets.all(16),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      const Row(
+                      Row(
                         children: [
-                          Icon(Icons.person, size: 20),
-                          SizedBox(width: 8),
-                          Text(
+                          const Icon(Icons.person, size: 20),
+                          const SizedBox(width: 8),
+                          const Text(
                             'User Information',
                             style: TextStyle(
                               fontSize: 18,
                               fontWeight: FontWeight.bold,
                             ),
                           ),
+                          const Spacer(),
+                          // Add role badge
+                          if (isSuperAdmin)
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 8,
+                                vertical: 4,
+                              ),
+                              decoration: BoxDecoration(
+                                color: Colors.purple,
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              child: const Text(
+                                'SUPER ADMIN',
+                                style: TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 10,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            )
+                          else if (isAdmin)
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 8,
+                                vertical: 4,
+                              ),
+                              decoration: BoxDecoration(
+                                color: Colors.blue,
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              child: const Text(
+                                'ADMIN',
+                                style: TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 10,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            ),
                         ],
                       ),
                       const SizedBox(height: 16),
                       _buildInfoRow('Email', user?.email ?? 'N/A'),
                       _buildInfoRow(
+                          'Company', currentUser.valueOrNull?.company ?? 'N/A'),
+                      _buildInfoRow(
                           'User ID', user?.uid.substring(0, 8) ?? 'N/A'),
                       _buildInfoRow(
-                          'Role',
-                          currentUser.valueOrNull?.role.toUpperCase() ??
-                              'USER'),
+                          'Role', _formatRole(currentUser.valueOrNull?.role)),
                       const SizedBox(height: 12),
                       Row(
                         children: [
@@ -103,7 +167,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                                     size: 8, color: Colors.green),
                                 SizedBox(width: 6),
                                 Text(
-                                  'Connected to Supabase',
+                                  'Connected to Firebase',
                                   style: TextStyle(
                                     color: Colors.green,
                                     fontSize: 12,
@@ -121,7 +185,72 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
               ),
               const SizedBox(height: 16),
 
-              // App Settings Card
+              // Admin Panel Card - Only for admins
+              if (isAdmin) ...[
+                Card(
+                  child: InkWell(
+                    onTap: () {
+                      Navigator.of(context).push(
+                        MaterialPageRoute(
+                          builder: (context) => const AdminPanelScreen(),
+                        ),
+                      );
+                    },
+                    borderRadius: BorderRadius.circular(12),
+                    child: Padding(
+                      padding: const EdgeInsets.all(16),
+                      child: Row(
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.all(12),
+                            decoration: BoxDecoration(
+                              color: Colors.purple.withOpacity(0.1),
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            child: const Icon(
+                              Icons.admin_panel_settings,
+                              color: Colors.purple,
+                              size: 24,
+                            ),
+                          ),
+                          const SizedBox(width: 16),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                const Text(
+                                  'Admin Panel',
+                                  style: TextStyle(
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                                Text(
+                                  isSuperAdmin
+                                      ? 'Manage users and assign roles'
+                                      : 'View system users',
+                                  style: TextStyle(
+                                    fontSize: 14,
+                                    color: Colors.grey[600],
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          const Icon(
+                            Icons.arrow_forward_ios,
+                            size: 16,
+                            color: Colors.grey,
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 16),
+              ],
+
+              // App Settings Card - PRESERVED AS IS
               Card(
                 child: Padding(
                   padding: const EdgeInsets.all(16),
@@ -201,7 +330,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
               ),
               const SizedBox(height: 16),
 
-              // Data Management Card
+              // Data Management Card - PRESERVED AS IS
               Card(
                 child: Padding(
                   padding: const EdgeInsets.all(16),
@@ -269,7 +398,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
               ),
               const SizedBox(height: 16),
 
-              // Account Actions Card
+              // Account Actions Card - PRESERVED AS IS
               Card(
                 child: Padding(
                   padding: const EdgeInsets.all(16),
@@ -317,7 +446,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
               ),
               const SizedBox(height: 16),
 
-              // About Section
+              // About Section - PRESERVED AS IS
               Card(
                 child: Padding(
                   padding: const EdgeInsets.all(16),
@@ -340,7 +469,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                       const SizedBox(height: 16),
                       _buildInfoRow('App Name', 'Turbo Air Equipment'),
                       _buildInfoRow('Version', '1.0.0'),
-                      _buildInfoRow('Built with', 'Flutter & Supabase'),
+                      _buildInfoRow('Built with', 'Flutter & Firebase'),
                       const SizedBox(height: 8),
                       Text(
                         '© 2024 Turbo Air',
@@ -383,6 +512,22 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
         ],
       ),
     );
+  }
+
+  String _formatRole(String? role) {
+    if (role == null) return 'USER';
+    switch (role) {
+      case 'superadmin':
+        return 'SUPER ADMIN';
+      case 'admin':
+        return 'ADMIN';
+      case 'sales':
+        return 'SALES';
+      case 'distributor':
+        return 'DISTRIBUTOR';
+      default:
+        return role.toUpperCase();
+    }
   }
 
   void _showCurrencyDialog() {

@@ -1,7 +1,6 @@
 ﻿import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import '../../../../core/services/firestore_service.dart';
 import '../../../auth/presentation/providers/auth_provider.dart';
 
 // Clients provider

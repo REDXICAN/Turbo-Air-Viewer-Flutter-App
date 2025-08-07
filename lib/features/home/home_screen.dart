@@ -1,3 +1,4 @@
+// lib/features/home/home_screen.dart
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_adaptive_scaffold/flutter_adaptive_scaffold.dart';
@@ -7,6 +8,7 @@ import '../clients/presentation/screens/clients_screen.dart';
 import '../quotes/presentation/screens/quotes_screen.dart'
     hide Quote, QuoteItem, Client, Product;
 import '../profile/presentation/screens/profile_screen.dart';
+import '../admin/presentation/screens/admin_panel_screen.dart';
 import '../auth/presentation/providers/auth_provider.dart';
 import '../../core/widgets/sync_indicator.dart';
 import '../../core/models/models.dart';
@@ -21,7 +23,7 @@ class HomeScreen extends ConsumerStatefulWidget {
 class _HomeScreenState extends ConsumerState<HomeScreen> {
   int _selectedIndex = 0;
 
-  final List<NavigationDestination> _destinations = const [
+  final List<NavigationDestination> _baseDestinations = const [
     NavigationDestination(
       icon: Icon(Icons.home_outlined),
       selectedIcon: Icon(Icons.home),
@@ -64,9 +66,13 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   Widget build(BuildContext context) {
     final cartItemCountAsync = ref.watch(cartItemCountProvider);
     final cartItemCount = cartItemCountAsync.valueOrNull ?? 0;
+    final currentUser = ref.watch(currentUserProvider);
+    final isAdmin = currentUser.valueOrNull?.isAdmin ?? false;
+
+    // Build destinations with dynamic cart badge and admin panel
+    final destinations = List<NavigationDestination>.from(_baseDestinations);
 
     // Update cart badge
-    final destinations = List<NavigationDestination>.from(_destinations);
     destinations[3] = NavigationDestination(
       icon: Badge(
         label: Text('$cartItemCount'),
@@ -81,6 +87,17 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
       label: 'Cart',
     );
 
+    // Add admin destination if user is admin
+    if (isAdmin) {
+      destinations.add(
+        const NavigationDestination(
+          icon: Icon(Icons.admin_panel_settings_outlined),
+          selectedIcon: Icon(Icons.admin_panel_settings),
+          label: 'Admin',
+        ),
+      );
+    }
+
     return AdaptiveScaffold(
       useDrawer: false,
       selectedIndex: _selectedIndex,
@@ -90,8 +107,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
         });
       },
       destinations: destinations,
-      body: (context) => _buildBody(),
-      smallBody: (context) => _buildBody(),
+      body: (context) => _buildBody(isAdmin),
+      smallBody: (context) => _buildBody(isAdmin),
       secondaryBody: null,
       leadingExtendedNavRail: _buildLeadingRail(),
       leadingUnextendedNavRail: _buildLeadingRail(),
@@ -123,7 +140,12 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     );
   }
 
-  Widget _buildBody() {
+  Widget _buildBody(bool isAdmin) {
+    // Handle admin panel navigation
+    if (isAdmin && _selectedIndex == 6) {
+      return const AdminPanelScreen();
+    }
+
     switch (_selectedIndex) {
       case 0:
         return _buildHomeContent();
@@ -354,7 +376,6 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
         ),
         child: Column(
           children: [
-            // Handle bar
             Container(
               width: 40,
               height: 4,
@@ -364,8 +385,6 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                 borderRadius: BorderRadius.circular(2),
               ),
             ),
-
-            // Header
             Padding(
               padding: const EdgeInsets.all(16),
               child: Row(
@@ -383,13 +402,10 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                 ],
               ),
             ),
-
-            // Quote details
             Expanded(
               child: ListView(
                 padding: const EdgeInsets.all(16),
                 children: [
-                  // Totals summary at top
                   Container(
                     padding: const EdgeInsets.all(16),
                     decoration: BoxDecoration(
@@ -411,10 +427,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                       ],
                     ),
                   ),
-
                   const SizedBox(height: 16),
-
-                  // Items
                   Text(
                     'Items (${quote.items.length})',
                     style: const TextStyle(

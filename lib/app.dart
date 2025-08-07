@@ -1,3 +1,4 @@
+// lib/app.dart
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'core/theme/app_theme.dart';
@@ -13,6 +14,7 @@ class TurboAirApp extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final authState = ref.watch(authStateProvider);
     final themeMode = ref.watch(themeModeProvider);
+    final router = ref.watch(routerProvider);
 
     return MaterialApp.router(
       title: 'Turbo Air',
@@ -20,7 +22,7 @@ class TurboAirApp extends ConsumerWidget {
       darkTheme: AppTheme.getTheme(Brightness.dark),
       themeMode: themeMode,
       debugShowCheckedModeBanner: false,
-      routerConfig: AppRouter.router,
+      routerConfig: router,
       builder: (context, child) {
         // Handle auth state globally
         return authState.when(

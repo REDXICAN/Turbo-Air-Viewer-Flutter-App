@@ -3,7 +3,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/config/app_config.dart';
 import '../../../core/utils/product_image_helper.dart';
-import '../../../core/services/firestore_service.dart';
 import '../../auth/presentation/providers/auth_provider.dart';
 import '../../clients/presentation/screens/clients_screen.dart'
     show selectedClientProvider;

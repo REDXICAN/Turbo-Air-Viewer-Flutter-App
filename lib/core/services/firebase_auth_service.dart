@@ -1,3 +1,5 @@
+// lib/core/services/firebase_auth_service.dart
+import 'package:flutter/foundation.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 
@@ -18,14 +20,26 @@ class FirebaseAuthService {
     String? company,
   }) async {
     try {
+      // Check if this is the first user
+      final usersSnapshot = await _firestore.collection('user_profiles').get();
+      final isFirstUser = usersSnapshot.docs.isEmpty;
+
       // Create auth user
       final credential = await _auth.createUserWithEmailAndPassword(
         email: email,
         password: password,
       );
 
-      // Create user profile in Firestore
+      // Create user profile in Firestore with appropriate role
       if (credential.user != null) {
+        String role = 'distributor';
+
+        // First user becomes superadmin
+        if (isFirstUser) {
+          role = 'superadmin';
+          debugPrint('🎉 First user registered as SUPER ADMIN: $email');
+        }
+
         await _firestore
             .collection('user_profiles')
             .doc(credential.user!.uid)
@@ -33,7 +47,7 @@ class FirebaseAuthService {
           'id': credential.user!.uid,
           'email': email,
           'company': company,
-          'role': 'distributor',
+          'role': role,
           'created_at': FieldValue.serverTimestamp(),
           'updated_at': FieldValue.serverTimestamp(),
         });
@@ -90,7 +104,7 @@ class FirebaseAuthService {
       final doc = await _firestore.collection('user_profiles').doc(uid).get();
       return doc.data();
     } catch (e) {
-      print('Error getting user profile: $e');
+      debugPrint('Error getting user profile: $e');
       return null;
     }
   }
@@ -99,5 +113,57 @@ class FirebaseAuthService {
   Future<void> updateUserProfile(String uid, Map<String, dynamic> data) async {
     data['updated_at'] = FieldValue.serverTimestamp();
     await _firestore.collection('user_profiles').doc(uid).update(data);
+  }
+
+  // Update user role (admin/superadmin only)
+  Future<void> updateUserRole(String targetUid, String newRole) async {
+    try {
+      // Don't allow changing superadmin role
+      final targetDoc =
+          await _firestore.collection('user_profiles').doc(targetUid).get();
+      if (targetDoc.data()?['role'] == 'superadmin') {
+        throw Exception('Cannot change super admin role');
+      }
+
+      await _firestore.collection('user_profiles').doc(targetUid).update({
+        'role': newRole,
+        'updated_at': FieldValue.serverTimestamp(),
+      });
+    } catch (e) {
+      throw Exception('Failed to update user role: $e');
+    }
+  }
+
+  // Get all users (admin/superadmin only)
+  Stream<List<Map<String, dynamic>>> getAllUsers() {
+    return _firestore
+        .collection('user_profiles')
+        .orderBy('created_at', descending: true)
+        .snapshots()
+        .map((snapshot) => snapshot.docs.map((doc) {
+              final data = doc.data();
+              data['id'] = doc.id;
+              return data;
+            }).toList());
+  }
+
+  // Delete user (superadmin only)
+  Future<void> deleteUser(String uid) async {
+    try {
+      // Don't allow deleting superadmin
+      final userDoc =
+          await _firestore.collection('user_profiles').doc(uid).get();
+      if (userDoc.data()?['role'] == 'superadmin') {
+        throw Exception('Cannot delete super admin');
+      }
+
+      // Delete from Firestore
+      await _firestore.collection('user_profiles').doc(uid).delete();
+
+      // Note: Deleting from Firebase Auth requires admin SDK
+      // This would typically be done via a Cloud Function
+    } catch (e) {
+      throw Exception('Failed to delete user: $e');
+    }
   }
 }
