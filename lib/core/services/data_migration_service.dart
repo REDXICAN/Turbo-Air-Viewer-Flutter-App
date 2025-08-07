@@ -1,77 +1,6 @@
-// lib/core/services/data_migration_service.dart
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:flutter/material.dart';
-
-/// Data Migration Service
-///
-/// This service is designed for one-time migration from Supabase to Firebase.
-///
-/// TO USE THIS SERVICE FOR MIGRATION:
-/// 1. Temporarily add to pubspec.yaml:
-///    supabase_flutter: ^2.0.0
-///
-/// 2. Run: flutter pub get
-///
-/// 3. Uncomment the migration code below
-///
-/// 4. Run the migration
-///
-/// 5. After migration is complete, remove supabase_flutter from pubspec.yaml
-///
-/// 6. Comment out the migration code again
-
-class DataMigrationService {
-  static final FirebaseFirestore _firestore = FirebaseFirestore.instance;
-
-  // Placeholder for when migration is not needed
-  static Future<MigrationResult> migrateAllData({
-    required Function(String) onProgress,
-    required String? userId,
-  }) async {
-    final result = MigrationResult();
-    result.success = false;
-    result.errors.add(
-        'Migration service is disabled. Uncomment the code below if you need to migrate from Supabase.');
-    return result;
-  }
-}
-
-// Migration Result class
-class MigrationResult {
-  bool success = false;
-  int productsCount = 0;
-  int clientsCount = 0;
-  int quotesCount = 0;
-  int quoteItemsCount = 0;
-  int cartItemsCount = 0;
-  Map<String, String> clientIdMap = {};
-  List<String> errors = [];
-
-  String get summary {
-    if (success) {
-      return '''
-Migration completed successfully!
-- Products: $productsCount
-- Clients: $clientsCount
-- Quotes: $quotesCount (with $quoteItemsCount items)
-- Cart Items: $cartItemsCount
-''';
-    } else {
-      return '''
-Migration failed!
-Errors:
-${errors.join('\n')}
-''';
-    }
-  }
-}
-
-/* ============================================================================
-   UNCOMMENT THE CODE BELOW WHEN YOU NEED TO MIGRATE FROM SUPABASE
-   Remember to add supabase_flutter to pubspec.yaml first!
-   ============================================================================
-
 import 'package:supabase_flutter/supabase_flutter.dart' as sb;
+import 'package:flutter/material.dart';
 
 class DataMigrationService {
   static final FirebaseFirestore _firestore = FirebaseFirestore.instance;
@@ -356,4 +285,32 @@ class DataMigrationService {
   }
 }
 
-============================================================================ */
+// Migration Result class
+class MigrationResult {
+  bool success = false;
+  int productsCount = 0;
+  int clientsCount = 0;
+  int quotesCount = 0;
+  int quoteItemsCount = 0;
+  int cartItemsCount = 0;
+  Map<String, String> clientIdMap = {};
+  List<String> errors = [];
+
+  String get summary {
+    if (success) {
+      return '''
+Migration completed successfully!
+- Products: $productsCount
+- Clients: $clientsCount
+- Quotes: $quotesCount (with $quoteItemsCount items)
+- Cart Items: $cartItemsCount
+''';
+    } else {
+      return '''
+Migration failed!
+Errors:
+${errors.join('\n')}
+''';
+    }
+  }
+}
