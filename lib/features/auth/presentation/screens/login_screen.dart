@@ -1,3 +1,4 @@
+// lib/features/auth/presentation/screens/login_screen.dart
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -37,21 +38,24 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
 
       if (_isSignUp) {
         await authService.signUp(
-          email: _emailController.text,
+          email: _emailController.text.trim(),
           password: _passwordController.text,
-          company: _companyController.text,
+          company: _companyController.text.trim(),
         );
 
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
-                content: Text(
-                    'Account created! Please check your email to verify.')),
+              content: Text('Account created successfully!'),
+              backgroundColor: Colors.green,
+            ),
           );
+          // After signup, redirect to home
+          context.go('/');
         }
       } else {
         await authService.signIn(
-          email: _emailController.text,
+          email: _emailController.text.trim(),
           password: _passwordController.text,
         );
 
@@ -62,7 +66,11 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     } catch (error) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error: $error')),
+          SnackBar(
+            content: Text(
+                'Error: ${error.toString().replaceAll('Exception: ', '')}'),
+            backgroundColor: Colors.red,
+          ),
         );
       }
     } finally {
@@ -75,6 +83,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: Colors.grey[50],
       body: SafeArea(
         child: Center(
           child: SingleChildScrollView(
@@ -86,36 +95,37 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                 child: Column(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    // Logo
-                    Image.asset(
-                      'assets/logos/turbo_air_logo.png',
-                      height: 100,
-                      errorBuilder: (context, error, stackTrace) {
-                        return const Text(
-                          'TURBO AIR',
-                          style: TextStyle(
-                            fontSize: 32,
-                            fontWeight: FontWeight.bold,
-                            color: Color(0xFF20429C),
-                          ),
-                        );
-                      },
+                    // Logo or App Name
+                    Container(
+                      padding: const EdgeInsets.all(16),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFF20429C),
+                        borderRadius: BorderRadius.circular(16),
+                      ),
+                      child: const Icon(
+                        Icons.ac_unit,
+                        size: 48,
+                        color: Colors.white,
+                      ),
                     ),
-                    const SizedBox(height: 48),
+                    const SizedBox(height: 24),
 
                     // Title
                     Text(
-                      _isSignUp ? 'Create Account' : 'Welcome Back',
-                      style: Theme.of(context).textTheme.headlineMedium,
+                      'TURBO AIR',
+                      style: TextStyle(
+                        fontSize: 28,
+                        fontWeight: FontWeight.bold,
+                        color: const Color(0xFF20429C),
+                      ),
                     ),
                     const SizedBox(height: 8),
                     Text(
-                      _isSignUp
-                          ? 'Sign up to access the equipment catalog'
-                          : 'Sign in to your account',
-                      style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                            color: Colors.grey[600],
-                          ),
+                      _isSignUp ? 'Create Account' : 'Welcome Back',
+                      style: TextStyle(
+                        fontSize: 20,
+                        color: Colors.grey[700],
+                      ),
                     ),
                     const SizedBox(height: 32),
 
@@ -123,9 +133,12 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                     TextFormField(
                       controller: _emailController,
                       keyboardType: TextInputType.emailAddress,
-                      decoration: const InputDecoration(
+                      decoration: InputDecoration(
                         labelText: 'Email',
-                        prefixIcon: Icon(Icons.email_outlined),
+                        prefixIcon: const Icon(Icons.email),
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
                       ),
                       validator: (value) {
                         if (value == null || value.isEmpty) {
@@ -143,44 +156,58 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                     TextFormField(
                       controller: _passwordController,
                       obscureText: true,
-                      decoration: const InputDecoration(
+                      decoration: InputDecoration(
                         labelText: 'Password',
-                        prefixIcon: Icon(Icons.lock_outline),
+                        prefixIcon: const Icon(Icons.lock),
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
                       ),
                       validator: (value) {
                         if (value == null || value.isEmpty) {
                           return 'Please enter your password';
                         }
-                        if (value.length < 6) {
+                        if (_isSignUp && value.length < 6) {
                           return 'Password must be at least 6 characters';
                         }
                         return null;
                       },
                     ),
+                    const SizedBox(height: 16),
 
-                    // Company field (signup only)
+                    // Company field (only for signup)
                     if (_isSignUp) ...[
-                      const SizedBox(height: 16),
                       TextFormField(
                         controller: _companyController,
-                        decoration: const InputDecoration(
-                          labelText: 'Company (Optional)',
-                          prefixIcon: Icon(Icons.business_outlined),
+                        decoration: InputDecoration(
+                          labelText: 'Company Name',
+                          prefixIcon: const Icon(Icons.business),
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
                         ),
+                        validator: (value) {
+                          if (_isSignUp && (value == null || value.isEmpty)) {
+                            return 'Please enter your company name';
+                          }
+                          return null;
+                        },
                       ),
+                      const SizedBox(height: 16),
                     ],
-
-                    const SizedBox(height: 24),
 
                     // Submit button
                     SizedBox(
                       width: double.infinity,
-                      height: 48,
+                      height: 50,
                       child: ElevatedButton(
                         onPressed: _isLoading ? null : _handleAuth,
                         style: ElevatedButton.styleFrom(
                           backgroundColor: const Color(0xFF20429C),
                           foregroundColor: Colors.white,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
                         ),
                         child: _isLoading
                             ? const SizedBox(
@@ -192,25 +219,88 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                                       Colors.white),
                                 ),
                               )
-                            : Text(_isSignUp ? 'Sign Up' : 'Sign In'),
+                            : Text(
+                                _isSignUp ? 'Sign Up' : 'Sign In',
+                                style: const TextStyle(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
                       ),
                     ),
-
                     const SizedBox(height: 16),
 
                     // Toggle sign up/sign in
-                    TextButton(
-                      onPressed: () {
-                        setState(() {
-                          _isSignUp = !_isSignUp;
-                        });
-                      },
-                      child: Text(
-                        _isSignUp
-                            ? 'Already have an account? Sign In'
-                            : "Don't have an account? Sign Up",
-                      ),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Text(
+                          _isSignUp
+                              ? 'Already have an account?'
+                              : "Don't have an account?",
+                          style: TextStyle(color: Colors.grey[600]),
+                        ),
+                        TextButton(
+                          onPressed: () {
+                            setState(() {
+                              _isSignUp = !_isSignUp;
+                              _formKey.currentState?.reset();
+                            });
+                          },
+                          child: Text(
+                            _isSignUp ? 'Sign In' : 'Sign Up',
+                            style: const TextStyle(
+                              color: Color(0xFF20429C),
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ),
+                      ],
                     ),
+
+                    // Forgot password (only for sign in)
+                    if (!_isSignUp) ...[
+                      TextButton(
+                        onPressed: () async {
+                          if (_emailController.text.isEmpty) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(
+                                content: Text('Please enter your email first'),
+                              ),
+                            );
+                            return;
+                          }
+
+                          try {
+                            final authService = ref.read(authServiceProvider);
+                            await authService
+                                .resetPassword(_emailController.text.trim());
+
+                            if (mounted) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(
+                                  content: Text('Password reset email sent!'),
+                                  backgroundColor: Colors.green,
+                                ),
+                              );
+                            }
+                          } catch (e) {
+                            if (mounted) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(
+                                  content: Text('Error: ${e.toString()}'),
+                                  backgroundColor: Colors.red,
+                                ),
+                              );
+                            }
+                          }
+                        },
+                        child: const Text(
+                          'Forgot Password?',
+                          style: TextStyle(color: Colors.grey),
+                        ),
+                      ),
+                    ],
                   ],
                 ),
               ),

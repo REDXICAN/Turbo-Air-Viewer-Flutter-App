@@ -23,6 +23,15 @@ void main() async {
       options: DefaultFirebaseOptions.currentPlatform,
     );
 
+    // Debug authentication state changes
+    fb.FirebaseAuth.instance.authStateChanges().listen((fb.User? user) {
+      if (user == null) {
+        print('🔴 User is currently signed out!');
+      } else {
+        print('🟢 User is signed in: ${user.email}');
+      }
+    });
+
     // Optional: Enable Firestore offline persistence
     FirebaseFirestore.instance.settings = const Settings(
       persistenceEnabled: true,
