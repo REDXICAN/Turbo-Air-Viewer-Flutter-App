@@ -86,6 +86,13 @@ final routerProvider = Provider<GoRouter>((ref) {
   return AppRouter.router;
 });
 
+// Cart item count provider
+final cartItemCountProvider = StreamProvider<int>((ref) async* {
+  // This should be implemented with your actual cart service
+  // For now, returning a default stream
+  yield 0;
+});
+
 // Main Navigation Shell with Bottom Navigation Bar
 class MainNavigationShell extends ConsumerStatefulWidget {
   final Widget child;
@@ -153,15 +160,16 @@ class _MainNavigationShellState extends ConsumerState<MainNavigationShell> {
     // Update routes if admin
     final routes = isAdmin ? [..._routes, '/admin'] : _routes;
 
-    // Calculate selected index based on current location
     final selectedIndex = _calculateSelectedIndex(currentLocation);
 
     return Scaffold(
       body: widget.child,
       bottomNavigationBar: NavigationBar(
-        selectedIndex: selectedIndex,
+        selectedIndex: selectedIndex.clamp(0, routes.length - 1),
         onDestinationSelected: (index) {
-          context.go(routes[index]);
+          if (index < routes.length) {
+            context.go(routes[index]);
+          }
         },
         destinations: [
           const NavigationDestination(
@@ -176,12 +184,12 @@ class _MainNavigationShellState extends ConsumerState<MainNavigationShell> {
           ),
           NavigationDestination(
             icon: Badge(
-              label: Text('$cartItemCount'),
+              label: cartItemCount > 0 ? Text('$cartItemCount') : null,
               isLabelVisible: cartItemCount > 0,
               child: const Icon(Icons.shopping_cart_outlined),
             ),
             selectedIcon: Badge(
-              label: Text('$cartItemCount'),
+              label: cartItemCount > 0 ? Text('$cartItemCount') : null,
               isLabelVisible: cartItemCount > 0,
               child: const Icon(Icons.shopping_cart),
             ),
