@@ -7,7 +7,7 @@ import '../../auth/presentation/providers/auth_provider.dart';
 import '../../clients/presentation/screens/clients_screen.dart'
     show selectedClientProvider;
 
-// Products provider
+// Products provider - Fixed to handle null category properly
 final productsProvider =
     StreamProvider.family<List<Product>, String?>((ref, category) {
   final firestoreService = ref.watch(firestoreServiceProvider);
@@ -41,6 +41,12 @@ class _ProductsScreenState extends ConsumerState<ProductsScreen> {
   final TextEditingController _searchController = TextEditingController();
 
   @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
     final searchQuery = ref.watch(searchQueryProvider);
     final theme = Theme.of(context);
@@ -63,6 +69,15 @@ class _ProductsScreenState extends ConsumerState<ProductsScreen> {
               decoration: InputDecoration(
                 hintText: 'Search by SKU, category or description',
                 prefixIcon: const Icon(Icons.search),
+                suffixIcon: _searchController.text.isNotEmpty
+                    ? IconButton(
+                        icon: const Icon(Icons.clear),
+                        onPressed: () {
+                          _searchController.clear();
+                          ref.read(searchQueryProvider.notifier).state = '';
+                        },
+                      )
+                    : null,
                 filled: true,
                 fillColor: theme.cardColor,
                 border: OutlineInputBorder(
@@ -163,9 +178,9 @@ class _ProductsScreenState extends ConsumerState<ProductsScreen> {
 
     return Column(
       children: [
-        // Back button
+        // Back button and category header
         Container(
-          padding: const EdgeInsets.all(16),
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
           child: Row(
             children: [
               IconButton(
@@ -177,10 +192,12 @@ class _ProductsScreenState extends ConsumerState<ProductsScreen> {
                 icon: const Icon(Icons.arrow_back),
               ),
               const SizedBox(width: 8),
-              Text(
-                selectedCategory!,
-                style:
-                    const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+              Expanded(
+                child: Text(
+                  selectedCategory!,
+                  style: const TextStyle(
+                      fontSize: 18, fontWeight: FontWeight.bold),
+                ),
               ),
             ],
           ),
@@ -188,9 +205,71 @@ class _ProductsScreenState extends ConsumerState<ProductsScreen> {
 
         Expanded(
           child: productsAsync.when(
-            data: (products) => _buildProductList(products),
+            data: (products) {
+              if (products.isEmpty) {
+                return Center(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      const Icon(
+                        Icons.inventory_2_outlined,
+                        size: 64,
+                        color: Colors.grey,
+                      ),
+                      const SizedBox(height: 16),
+                      Text(
+                        'No products in $selectedCategory',
+                        style: const TextStyle(
+                          fontSize: 16,
+                          color: Colors.grey,
+                        ),
+                      ),
+                    ],
+                  ),
+                );
+              }
+              return _buildProductList(products);
+            },
             loading: () => const Center(child: CircularProgressIndicator()),
-            error: (error, stack) => Center(child: Text('Error: $error')),
+            error: (error, stack) => Center(
+              child: Padding(
+                padding: const EdgeInsets.all(16),
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    const Icon(
+                      Icons.error_outline,
+                      size: 48,
+                      color: Colors.red,
+                    ),
+                    const SizedBox(height: 16),
+                    const Text(
+                      'Failed to load products',
+                      style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      error.toString().contains('index')
+                          ? 'Database index needs to be created. Please contact support.'
+                          : 'Please try again later.',
+                      textAlign: TextAlign.center,
+                      style: const TextStyle(color: Colors.grey),
+                    ),
+                    const SizedBox(height: 16),
+                    ElevatedButton(
+                      onPressed: () {
+                        // Force refresh
+                        ref.invalidate(productsProvider(selectedCategory));
+                      },
+                      child: const Text('Retry'),
+                    ),
+                  ],
+                ),
+              ),
+            ),
           ),
         ),
       ],
@@ -203,14 +282,51 @@ class _ProductsScreenState extends ConsumerState<ProductsScreen> {
     return searchResults.when(
       data: (products) {
         if (products.isEmpty) {
-          return const Center(
-            child: Text('No products found'),
+          return Center(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                const Icon(
+                  Icons.search_off,
+                  size: 64,
+                  color: Colors.grey,
+                ),
+                const SizedBox(height: 16),
+                Text(
+                  'No products found for "${ref.watch(searchQueryProvider)}"',
+                  style: const TextStyle(
+                    fontSize: 16,
+                    color: Colors.grey,
+                  ),
+                ),
+              ],
+            ),
           );
         }
         return _buildProductList(products);
       },
       loading: () => const Center(child: CircularProgressIndicator()),
-      error: (error, stack) => Center(child: Text('Error: $error')),
+      error: (error, stack) => Center(
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              const Icon(
+                Icons.error_outline,
+                size: 48,
+                color: Colors.red,
+              ),
+              const SizedBox(height: 16),
+              Text(
+                'Search failed: ${error.toString()}',
+                textAlign: TextAlign.center,
+                style: const TextStyle(color: Colors.grey),
+              ),
+            ],
+          ),
+        ),
+      ),
     );
   }
 
@@ -307,7 +423,8 @@ class _ProductsScreenState extends ConsumerState<ProductsScreen> {
                 ),
                 const SizedBox(height: 16),
 
-                if (product.description != null) ...[
+                if (product.description != null &&
+                    product.description!.isNotEmpty) ...[
                   const Text('Description:',
                       style: TextStyle(fontWeight: FontWeight.bold)),
                   Text(product.description!),
@@ -411,7 +528,7 @@ class _ProductsScreenState extends ConsumerState<ProductsScreen> {
               label: 'View Cart',
               textColor: Colors.white,
               onPressed: () {
-                // Navigate to cart screen
+                // Navigate to cart screen when implemented
               },
             ),
           ),
@@ -472,5 +589,21 @@ class Product {
       temperatureRange: json['temperature_range'],
       capacity: json['capacity'],
     );
+  }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'id': id,
+      'sku': sku,
+      'category': category,
+      'product_type': productType,
+      'description': description,
+      'price': price,
+      'dimensions': dimensions,
+      'weight': weight,
+      'voltage': voltage,
+      'temperature_range': temperatureRange,
+      'capacity': capacity,
+    };
   }
 }
