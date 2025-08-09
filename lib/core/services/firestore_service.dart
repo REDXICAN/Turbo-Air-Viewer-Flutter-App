@@ -307,7 +307,9 @@ class FirestoreService {
     final skuSnapshot = await _db
         .collection('products')
         .where('sku', isGreaterThanOrEqualTo: searchQuery)
-        .where('sku', isLessThan: searchQuery + '\uf8ff')
+        .where('sku',
+            isLessThan:
+                '${searchQuery}\uf8ff') // FIXED: Use string interpolation
         .limit(20)
         .get();
 

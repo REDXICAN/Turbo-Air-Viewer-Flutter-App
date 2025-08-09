@@ -143,12 +143,102 @@ class FirebaseAuthService {
   }
 
   // Check if email is already in use
+  // DEPRECATED: This method is no longer recommended for security reasons
+  // Instead, handle the 'email-already-in-use' error during sign-up
+  @Deprecated(
+      'Handle email-already-in-use error during createUserWithEmailAndPassword instead')
   Future<bool> isEmailInUse(String email) async {
+    // For security reasons (email enumeration protection),
+    // Firebase no longer recommends checking if an email exists before sign-up.
+    // Instead, attempt to create the account and handle the error appropriately.
+    //
+    // This method always returns false to maintain backward compatibility,
+    // but you should update your code to handle errors during sign-up instead.
+    return false;
+  }
+
+  // Recommended approach: Handle errors during sign-up
+  Future<SignUpResult> signUpWithEmailAndPassword({
+    required String email,
+    required String password,
+    required String name,
+  }) async {
     try {
-      final methods = await _auth.fetchSignInMethodsForEmail(email);
-      return methods.isNotEmpty;
+      final credential = await _auth.createUserWithEmailAndPassword(
+        email: email,
+        password: password,
+      );
+
+      if (credential.user != null) {
+        // Update display name
+        await credential.user!.updateDisplayName(name);
+
+        // Create user profile in Firestore
+        await _createUserProfile(
+          uid: credential.user!.uid,
+          email: email,
+          name: name,
+        );
+
+        return SignUpResult(
+          success: true,
+          user: credential.user,
+        );
+      }
+
+      return const SignUpResult(
+        success: false,
+        errorMessage: 'Failed to create account',
+      );
+    } on FirebaseAuthException catch (e) {
+      String errorMessage;
+
+      switch (e.code) {
+        case 'email-already-in-use':
+          errorMessage =
+              'This email is already registered. Please sign in instead.';
+          break;
+        case 'invalid-email':
+          errorMessage = 'The email address is not valid.';
+          break;
+        case 'weak-password':
+          errorMessage =
+              'The password is too weak. Please use at least 6 characters.';
+          break;
+        case 'operation-not-allowed':
+          errorMessage = 'Email/password accounts are not enabled.';
+          break;
+        default:
+          errorMessage = e.message ?? 'An error occurred during sign up.';
+      }
+
+      return SignUpResult(
+        success: false,
+        errorMessage: errorMessage,
+        errorCode: e.code,
+      );
     } catch (e) {
-      return false;
+      return SignUpResult(
+        success: false,
+        errorMessage: 'An unexpected error occurred: ${e.toString()}',
+      );
     }
   }
+}
+
+// Sign-up result class
+class SignUpResult {
+  final bool success;
+  final User? user;
+  final String? errorMessage;
+  final String? errorCode;
+
+  const SignUpResult({
+    required this.success,
+    this.user,
+    this.errorMessage,
+    this.errorCode,
+  });
+
+  bool get isEmailAlreadyInUse => errorCode == 'email-already-in-use';
 }
