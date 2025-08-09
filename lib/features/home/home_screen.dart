@@ -10,14 +10,20 @@ class HomeScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final userAsync = ref.watch(currentUserProvider);
-    final user = userAsync.valueOrNull;
-    final recentQuotes = ref.watch(recentQuotesProvider);
+    // Get current user from Firebase Auth
+    final user = ref.watch(currentUserProvider);
 
+    // Get user profile for additional data
+    final userProfileAsync = ref.watch(currentUserProfileProvider);
+    final userProfile = userProfileAsync.valueOrNull;
+
+    final recentQuotes = ref.watch(recentQuotesProvider);
     final totalClientsAsync = ref.watch(totalClientsProvider);
     final totalQuotesAsync = ref.watch(totalQuotesProvider);
     final cartItemCountAsync = ref.watch(cartItemCountProvider);
     final totalProductsAsync = ref.watch(totalProductsProvider);
+
+    final theme = Theme.of(context);
 
     return Scaffold(
       body: CustomScrollView(
@@ -28,8 +34,8 @@ class HomeScreen extends ConsumerWidget {
             snap: true,
             flexibleSpace: FlexibleSpaceBar(
               title: Text(
-                'Welcome, ${user?.email ?? 'User'}',
-                style: const TextStyle(color: Colors.white),
+                'Welcome, ${userProfile?.name ?? user?.displayName ?? user?.email ?? 'User'}',
+                style: TextStyle(color: theme.colorScheme.onPrimary),
               ),
               background: Container(
                 decoration: BoxDecoration(
@@ -37,8 +43,8 @@ class HomeScreen extends ConsumerWidget {
                     begin: Alignment.topLeft,
                     end: Alignment.bottomRight,
                     colors: [
-                      Theme.of(context).primaryColor,
-                      Theme.of(context).primaryColor.withOpacity(0.7),
+                      theme.primaryColor,
+                      theme.primaryColor.withOpacity(0.7),
                     ],
                   ),
                 ),
@@ -106,37 +112,51 @@ class HomeScreen extends ConsumerWidget {
               ]),
             ),
           ),
-          if (recentQuotes.hasValue && recentQuotes.value!.isNotEmpty)
-            SliverToBoxAdapter(
-              child: Padding(
-                padding: const EdgeInsets.all(16),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'Recent Quotes',
-                      style: Theme.of(context).textTheme.headlineSmall,
-                    ),
-                    const SizedBox(height: 8),
-                    ...recentQuotes.value!.take(5).map((quote) => Card(
-                          child: ListTile(
-                            leading: const Icon(Icons.receipt),
-                            title: Text(quote.quoteNumber),
-                            subtitle: Text(
-                                '\$${quote.totalAmount.toStringAsFixed(2)}'),
-                            trailing: Text(
-                              _formatDate(quote.createdAt),
-                              style: Theme.of(context).textTheme.bodySmall,
+          recentQuotes.when(
+            data: (quotes) {
+              if (quotes.isEmpty) {
+                return const SliverToBoxAdapter(
+                  child: SizedBox.shrink(),
+                );
+              }
+              return SliverToBoxAdapter(
+                child: Padding(
+                  padding: const EdgeInsets.all(16),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Recent Quotes',
+                        style: theme.textTheme.headlineSmall,
+                      ),
+                      const SizedBox(height: 8),
+                      ...quotes.take(5).map((quote) => Card(
+                            child: ListTile(
+                              leading: const Icon(Icons.receipt),
+                              title: Text(quote.quoteNumber),
+                              subtitle: Text(
+                                  '\${quote.totalAmount.toStringAsFixed(2)}'),
+                              trailing: Text(
+                                _formatDate(quote.createdAt),
+                                style: theme.textTheme.bodySmall,
+                              ),
+                              onTap: () {
+                                _showQuoteDetails(context, quote);
+                              },
                             ),
-                            onTap: () {
-                              _showQuoteDetails(context, quote);
-                            },
-                          ),
-                        )),
-                  ],
+                          )),
+                    ],
+                  ),
                 ),
-              ),
+              );
+            },
+            loading: () => const SliverToBoxAdapter(
+              child: Center(child: CircularProgressIndicator()),
             ),
+            error: (_, __) => const SliverToBoxAdapter(
+              child: SizedBox.shrink(),
+            ),
+          ),
         ],
       ),
     );
@@ -150,10 +170,13 @@ class HomeScreen extends ConsumerWidget {
     Color color,
     VoidCallback onTap,
   ) {
+    final theme = Theme.of(context);
+
     return Card(
       elevation: 2,
       child: InkWell(
         onTap: onTap,
+        borderRadius: BorderRadius.circular(12),
         child: Container(
           padding: const EdgeInsets.all(16),
           child: Column(
@@ -163,14 +186,14 @@ class HomeScreen extends ConsumerWidget {
               const SizedBox(height: 8),
               Text(
                 value,
-                style: Theme.of(context).textTheme.headlineMedium?.copyWith(
-                      fontWeight: FontWeight.bold,
-                      color: color,
-                    ),
+                style: theme.textTheme.headlineMedium?.copyWith(
+                  fontWeight: FontWeight.bold,
+                  color: color,
+                ),
               ),
               Text(
                 title,
-                style: Theme.of(context).textTheme.bodySmall,
+                style: theme.textTheme.bodySmall,
                 textAlign: TextAlign.center,
               ),
             ],
@@ -180,7 +203,9 @@ class HomeScreen extends ConsumerWidget {
     );
   }
 
-  String _formatDate(DateTime date) {
+  String _formatDate(DateTime? date) {
+    if (date == null) return 'Unknown date';
+
     final now = DateTime.now();
     final difference = now.difference(date);
 
@@ -197,15 +222,17 @@ class HomeScreen extends ConsumerWidget {
   }
 
   void _showQuoteDetails(BuildContext context, Quote quote) {
+    final theme = Theme.of(context);
+
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
       builder: (context) => Container(
         height: MediaQuery.of(context).size.height * 0.8,
-        decoration: const BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.only(
+        decoration: BoxDecoration(
+          color: theme.cardColor,
+          borderRadius: const BorderRadius.only(
             topLeft: Radius.circular(20),
             topRight: Radius.circular(20),
           ),
@@ -217,7 +244,7 @@ class HomeScreen extends ConsumerWidget {
               height: 4,
               margin: const EdgeInsets.symmetric(vertical: 12),
               decoration: BoxDecoration(
-                color: Colors.grey[300],
+                color: theme.dividerColor,
                 borderRadius: BorderRadius.circular(2),
               ),
             ),
@@ -245,19 +272,19 @@ class HomeScreen extends ConsumerWidget {
                   Container(
                     padding: const EdgeInsets.all(16),
                     decoration: BoxDecoration(
-                      color: Colors.grey[100],
+                      color: theme.inputDecorationTheme.fillColor,
                       borderRadius: BorderRadius.circular(8),
                     ),
                     child: Column(
                       children: [
                         _buildDetailRow('Subtotal',
-                            '\$${quote.subtotal.toStringAsFixed(2)}'),
+                            '\${quote.subtotal.toStringAsFixed(2)}'),
                         _buildDetailRow('Tax (${quote.taxRate}%)',
-                            '\$${quote.taxAmount.toStringAsFixed(2)}'),
+                            '\${quote.taxAmount.toStringAsFixed(2)}'),
                         const Divider(),
                         _buildDetailRow(
                           'Total',
-                          '\$${quote.totalAmount.toStringAsFixed(2)}',
+                          '\${quote.totalAmount.toStringAsFixed(2)}',
                           isBold: true,
                         ),
                       ],
@@ -270,36 +297,39 @@ class HomeScreen extends ConsumerWidget {
                         fontSize: 16, fontWeight: FontWeight.bold),
                   ),
                   const SizedBox(height: 8),
-                  ...quote.items.map((item) => Padding(
-                        padding: const EdgeInsets.symmetric(vertical: 8),
-                        child: Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(
-                                    item.product?.sku ?? 'Unknown',
-                                    style: const TextStyle(
-                                        fontWeight: FontWeight.w500),
-                                  ),
-                                  Text(
-                                    '${item.quantity} × \$${item.unitPrice.toStringAsFixed(2)}',
-                                    style: TextStyle(
-                                        color: Colors.grey[600], fontSize: 12),
-                                  ),
-                                ],
-                              ),
+                  ...quote.items.map((item) {
+                    final product = item.product;
+                    final sku = product?['sku'] ?? 'Unknown';
+
+                    return Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 8),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  sku,
+                                  style: const TextStyle(
+                                      fontWeight: FontWeight.w500),
+                                ),
+                                Text(
+                                  '${item.quantity} × \${item.unitPrice.toStringAsFixed(2)}',
+                                  style: const TextStyle(fontSize: 12),
+                                ),
+                              ],
                             ),
-                            Text(
-                              '\$${item.totalPrice.toStringAsFixed(2)}',
-                              style:
-                                  const TextStyle(fontWeight: FontWeight.bold),
-                            ),
-                          ],
-                        ),
-                      )),
+                          ),
+                          Text(
+                            '\${item.totalPrice.toStringAsFixed(2)}',
+                            style: const TextStyle(fontWeight: FontWeight.bold),
+                          ),
+                        ],
+                      ),
+                    );
+                  }),
                 ],
               ),
             ),

@@ -37,18 +37,23 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final currentUser = ref.watch(currentUserProvider);
+    // Get Firebase user for auth info
     final userAsync = ref.watch(authStateProvider);
     final user = userAsync.valueOrNull;
+
+    // Get UserProfile for additional user data
+    final userProfileAsync = ref.watch(currentUserProfileProvider);
+    final userProfile = userProfileAsync.valueOrNull;
+
     final themeMode = ref.watch(themeModeProvider);
     final isDarkMode = themeMode == ThemeMode.dark ||
         (themeMode == ThemeMode.system &&
             MediaQuery.of(context).platformBrightness == Brightness.dark);
     final theme = Theme.of(context);
 
-    // Add admin checks
-    final isAdmin = currentUser.valueOrNull?.isAdmin ?? false;
-    final isSuperAdmin = currentUser.valueOrNull?.role == 'superadmin';
+    // Admin checks using UserProfile
+    final isAdmin = userProfile?.isAdmin ?? false;
+    final isSuperAdmin = userProfile?.role == 'superadmin';
 
     return Scaffold(
       backgroundColor: theme.scaffoldBackgroundColor,
@@ -143,12 +148,12 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                       ),
                       const SizedBox(height: 16),
                       _buildInfoRow('Email', user?.email ?? 'N/A'),
-                      _buildInfoRow(
-                          'Company', currentUser.valueOrNull?.company ?? 'N/A'),
+                      _buildInfoRow('Name',
+                          userProfile?.name ?? user?.displayName ?? 'N/A'),
+                      _buildInfoRow('Company', userProfile?.company ?? 'N/A'),
                       _buildInfoRow(
                           'User ID', user?.uid.substring(0, 8) ?? 'N/A'),
-                      _buildInfoRow(
-                          'Role', _formatRole(currentUser.valueOrNull?.role)),
+                      _buildInfoRow('Role', _formatRole(userProfile?.role)),
                       const SizedBox(height: 12),
                       Row(
                         children: [

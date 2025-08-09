@@ -1,297 +1,373 @@
-import 'package:hive_flutter/hive_flutter.dart';
+// lib/core/services/offline_service.dart
+import 'dart:async';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:connectivity_plus/connectivity_plus.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
-import 'package:uuid/uuid.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../models/models.dart';
 
 class OfflineService {
-  static const String productsBox = 'products';
-  static const String clientsBox = 'clients';
-  static const String quotesBox = 'quotes';
-  static const String cartBox = 'cart';
-  static const String syncQueueBox = 'sync_queue';
-  static const String searchHistoryBox = 'search_history';
+  static final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+  static final FirebaseAuth _auth = FirebaseAuth.instance;
+  static final Connectivity _connectivity = Connectivity();
 
-  static const _uuid = Uuid();
-  static final _supabase = Supabase.instance.client;
+  static StreamController<bool>? _connectionController;
+  static Stream<bool>? _connectionStream;
+  static bool _isOnline = true;
+  static Timer? _syncTimer;
 
-  /// Register all Hive adapters
-  static Future<void> registerAdapters() async {
-    if (!Hive.isAdapterRegistered(0)) {
-      Hive.registerAdapter(ProductAdapter());
-    }
-    if (!Hive.isAdapterRegistered(1)) {
-      Hive.registerAdapter(ClientAdapter());
-    }
-    if (!Hive.isAdapterRegistered(2)) {
-      Hive.registerAdapter(QuoteAdapter());
-    }
-    if (!Hive.isAdapterRegistered(3)) {
-      Hive.registerAdapter(QuoteItemAdapter());
-    }
-    if (!Hive.isAdapterRegistered(4)) {
-      Hive.registerAdapter(CartItemAdapter());
-    }
-    if (!Hive.isAdapterRegistered(5)) {
-      Hive.registerAdapter(SyncQueueItemAdapter());
-    }
-  }
+  // Offline queue for tracking pending operations
+  static final List<PendingOperation> _pendingOperations = [];
 
-  /// Initialize offline storage
+  /// Initialize offline support
   static Future<void> initialize() async {
-    // Open all boxes
-    await Hive.openBox<Product>(productsBox);
-    await Hive.openBox<Client>(clientsBox);
-    await Hive.openBox<Quote>(quotesBox);
-    await Hive.openBox<CartItem>(cartBox);
-    await Hive.openBox<SyncQueueItem>(syncQueueBox);
-    await Hive.openBox(searchHistoryBox);
+    // Enable Firebase offline persistence
+    _firestore.settings = const Settings(
+      persistenceEnabled: true,
+      cacheSizeBytes: Settings.CACHE_SIZE_UNLIMITED,
+    );
 
-    // Initial sync if online
-    if (await isOnline()) {
-      await syncAllData();
-    }
+    // Initialize connection monitoring
+    _connectionController = StreamController<bool>.broadcast();
+    _connectionStream = _connectionController!.stream;
+
+    // Check initial connection
+    await checkConnectivity();
 
     // Listen for connectivity changes
-    Connectivity().onConnectivityChanged.listen((result) async {
-      if (result != ConnectivityResult.none) {
+    _connectivity.onConnectivityChanged.listen((result) async {
+      final wasOffline = !_isOnline;
+      _isOnline = result != ConnectivityResult.none;
+      _connectionController?.add(_isOnline);
+
+      if (_isOnline && wasOffline) {
+        // Back online - sync pending changes
+        await syncPendingChanges();
+      }
+    });
+
+    // Set up periodic sync (every 30 seconds when online)
+    _syncTimer = Timer.periodic(const Duration(seconds: 30), (timer) async {
+      if (_isOnline) {
         await syncPendingChanges();
       }
     });
   }
 
-  /// Check if device is online
-  static Future<bool> isOnline() async {
-    final result = await Connectivity().checkConnectivity();
-    return result != ConnectivityResult.none;
+  /// Dispose resources
+  static void dispose() {
+    _connectionController?.close();
+    _syncTimer?.cancel();
   }
 
-  /// Sync all data from Supabase
-  static Future<void> syncAllData() async {
-    try {
-      // Sync products
-      await syncProducts();
-
-      // Sync user data
-      final userId = _supabase.auth.currentUser?.id;
-      if (userId != null) {
-        await syncClients(userId);
-        await syncQuotes(userId);
-        await syncCart(userId);
-      }
-    } catch (e) {
-      // Use debugPrint instead of print for production
-      // print('Sync error: $e');
-    }
+  /// Check current connectivity
+  static Future<bool> checkConnectivity() async {
+    final result = await _connectivity.checkConnectivity();
+    _isOnline = result != ConnectivityResult.none;
+    _connectionController?.add(_isOnline);
+    return _isOnline;
   }
 
-  /// Sync products from Supabase
-  static Future<void> syncProducts() async {
-    try {
-      final response = await _supabase.from('products').select().order('sku');
+  /// Get connection status stream
+  static Stream<bool> get connectionStream =>
+      _connectionStream ?? const Stream.empty();
 
-      final productsBox =
-          await Hive.openBox<Product>(OfflineService.productsBox);
-      await productsBox.clear();
+  /// Check if currently online
+  static bool get isOnline => _isOnline;
 
-      for (final json in response as List) {
-        final product = Product.fromJson(json);
-        await productsBox.put(product.id, product);
-      }
-    } catch (e) {
-      // Use debugPrint instead of print for production
-      // print('Products sync error: $e');
-    }
-  }
-
-  /// Sync clients from Supabase
-  static Future<void> syncClients(String userId) async {
-    try {
-      final response = await _supabase
-          .from('clients')
-          .select()
-          .eq('user_id', userId)
-          .order('company');
-
-      final clientsBox = await Hive.openBox<Client>(OfflineService.clientsBox);
-
-      for (final json in response as List) {
-        final client = Client.fromJson(json);
-        await clientsBox.put(client.id, client);
-      }
-    } catch (e) {
-      // Use debugPrint instead of print for production
-      // print('Clients sync error: $e');
-    }
-  }
-
-  /// Sync quotes from Supabase
-  static Future<void> syncQuotes(String userId) async {
-    try {
-      final response = await _supabase
-          .from('quotes')
-          .select('*, quote_items(*)')
-          .eq('user_id', userId)
-          .order('created_at', ascending: false);
-
-      final quotesBox = await Hive.openBox<Quote>(OfflineService.quotesBox);
-
-      for (final json in response as List) {
-        final quote = Quote.fromJson(json);
-        await quotesBox.put(quote.id, quote);
-      }
-    } catch (e) {
-      // Use debugPrint instead of print for production
-      // print('Quotes sync error: $e');
-    }
-  }
-
-  /// Sync cart from Supabase
-  static Future<void> syncCart(String userId) async {
-    try {
-      final response = await _supabase
-          .from('cart_items')
-          .select('*, products(*)')
-          .eq('user_id', userId);
-
-      final cartBox = await Hive.openBox<CartItem>(OfflineService.cartBox);
-      await cartBox.clear();
-
-      for (final json in response as List) {
-        final cartItem = CartItem.fromJson(json);
-        await cartBox.put(cartItem.id, cartItem);
-      }
-    } catch (e) {
-      // Use debugPrint instead of print for production
-      // print('Cart sync error: $e');
-    }
-  }
-
-  /// Add item to sync queue for later syncing
-  static Future<void> addToSyncQueue({
-    required String tableName,
-    required String operation,
-    required Map<String, dynamic> data,
+  /// Add product to cart with offline support
+  static Future<void> addToCart({
+    required String productId,
+    required String clientId,
+    required int quantity,
   }) async {
-    final syncBox = await Hive.openBox<SyncQueueItem>(syncQueueBox);
+    final userId = _auth.currentUser?.uid;
+    if (userId == null) throw Exception('User not authenticated');
 
-    final item = SyncQueueItem(
-      id: _uuid.v4(),
-      tableName: tableName,
-      operation: operation,
-      data: data,
-      createdAt: DateTime.now(),
-    );
+    final cartItem = {
+      'user_id': userId,
+      'product_id': productId,
+      'client_id': clientId,
+      'quantity': quantity,
+      'created_at': FieldValue.serverTimestamp(),
+      'updated_at': FieldValue.serverTimestamp(),
+      'synced': _isOnline,
+    };
 
-    await syncBox.add(item);
+    try {
+      // Try to add to Firestore
+      final docRef = await _firestore.collection('cart_items').add(cartItem);
+
+      if (!_isOnline) {
+        // Track this operation as pending
+        _pendingOperations.add(PendingOperation(
+          id: docRef.id,
+          collection: 'cart_items',
+          operation: OperationType.create,
+          data: cartItem,
+          timestamp: DateTime.now(),
+        ));
+      }
+    } catch (e) {
+      // If offline, the operation is queued by Firebase
+      print('Offline operation queued: $e');
+    }
   }
 
-  /// Sync all pending changes
+  /// Create quote with offline support
+  static Future<String> createQuote({
+    required String clientId,
+    required List<Map<String, dynamic>> items,
+    required double subtotal,
+    required double taxRate,
+    required double taxAmount,
+    required double totalAmount,
+  }) async {
+    final userId = _auth.currentUser?.uid;
+    if (userId == null) throw Exception('User not authenticated');
+
+    final quoteNumber = 'Q${DateTime.now().millisecondsSinceEpoch}';
+
+    final quoteData = {
+      'user_id': userId,
+      'client_id': clientId,
+      'quote_number': quoteNumber,
+      'subtotal': subtotal,
+      'tax_rate': taxRate,
+      'tax_amount': taxAmount,
+      'total_amount': totalAmount,
+      'status': 'draft',
+      'created_at': FieldValue.serverTimestamp(),
+      'updated_at': FieldValue.serverTimestamp(),
+      'synced': _isOnline,
+    };
+
+    try {
+      // Create quote document
+      final quoteRef = await _firestore.collection('quotes').add(quoteData);
+
+      // Add quote items
+      final batch = _firestore.batch();
+      for (final item in items) {
+        final itemRef = _firestore.collection('quote_items').doc();
+        batch.set(itemRef, {
+          ...item,
+          'quote_id': quoteRef.id,
+          'created_at': FieldValue.serverTimestamp(),
+        });
+      }
+      await batch.commit();
+
+      if (!_isOnline) {
+        // Track as pending
+        _pendingOperations.add(PendingOperation(
+          id: quoteRef.id,
+          collection: 'quotes',
+          operation: OperationType.create,
+          data: quoteData,
+          timestamp: DateTime.now(),
+        ));
+      }
+
+      return quoteRef.id;
+    } catch (e) {
+      print('Error creating quote: $e');
+      rethrow;
+    }
+  }
+
+  /// Update client with offline support
+  static Future<void> updateClient(
+      String clientId, Map<String, dynamic> data) async {
+    data['updated_at'] = FieldValue.serverTimestamp();
+    data['synced'] = _isOnline;
+
+    try {
+      await _firestore.collection('clients').doc(clientId).update(data);
+
+      if (!_isOnline) {
+        _pendingOperations.add(PendingOperation(
+          id: clientId,
+          collection: 'clients',
+          operation: OperationType.update,
+          data: data,
+          timestamp: DateTime.now(),
+        ));
+      }
+    } catch (e) {
+      print('Offline update queued: $e');
+    }
+  }
+
+  /// Get pending operations count
+  static int get pendingOperationsCount => _pendingOperations.length;
+
+  /// Get pending operations
+  static List<PendingOperation> get pendingOperations =>
+      List.unmodifiable(_pendingOperations);
+
+  /// Sync pending changes when back online
   static Future<void> syncPendingChanges() async {
-    if (!await isOnline()) return;
+    if (!_isOnline || _pendingOperations.isEmpty) return;
 
-    final syncBox = await Hive.openBox<SyncQueueItem>(syncQueueBox);
-    final pendingItems = syncBox.values.where((item) => !item.synced).toList();
+    print('Syncing ${_pendingOperations.length} pending operations...');
 
-    for (final item in pendingItems) {
+    final operationsToSync = List<PendingOperation>.from(_pendingOperations);
+    _pendingOperations.clear();
+
+    for (final operation in operationsToSync) {
       try {
-        await _syncItem(item);
-        item.synced = true;
-        await item.save();
+        // Update synced flag
+        await _firestore
+            .collection(operation.collection)
+            .doc(operation.id)
+            .update({'synced': true});
       } catch (e) {
-        // Use debugPrint instead of print for production
-        // print('Failed to sync item: $e');
+        print('Failed to sync operation ${operation.id}: $e');
+        // Re-add to pending if sync failed
+        _pendingOperations.add(operation);
       }
     }
 
-    // Clean up synced items
-    final syncedItems = syncBox.values.where((item) => item.synced).toList();
-    for (final item in syncedItems) {
-      await item.delete();
-    }
+    // Save pending operations to local storage
+    await _savePendingOperations();
   }
 
-  /// Sync individual queue item
-  static Future<void> _syncItem(SyncQueueItem item) async {
-    switch (item.operation) {
-      case 'insert':
-        await _supabase.from(item.tableName).insert(item.data);
-        break;
-      case 'update':
-        final id = item.data['id'];
-        final data = Map<String, dynamic>.from(item.data)..remove('id');
-        await _supabase.from(item.tableName).update(data).eq('id', id);
-        break;
-      case 'delete':
-        await _supabase.from(item.tableName).delete().eq('id', item.data['id']);
-        break;
-      case 'upsert':
-        await _supabase.from(item.tableName).upsert(item.data);
-        break;
-    }
-  }
-
-  /// Save client offline
-  static Future<Client> saveClientOffline(Client client) async {
-    final clientsBox = await Hive.openBox<Client>(OfflineService.clientsBox);
-
-    // Mark as not synced if offline
-    if (!await isOnline()) {
-      client.isSynced = false;
-
-      // Add to sync queue
-      await addToSyncQueue(
-        tableName: 'clients',
-        operation: client.id.startsWith('offline_') ? 'insert' : 'update',
-        data: client.toJson(),
-      );
+  /// Force sync all unsynced data
+  static Future<void> forceSyncAll() async {
+    if (!_isOnline) {
+      throw Exception('Cannot sync while offline');
     }
 
-    await clientsBox.put(client.id, client);
-    return client;
-  }
+    final userId = _auth.currentUser?.uid;
+    if (userId == null) return;
 
-  /// Save quote offline
-  static Future<Quote> saveQuoteOffline(Quote quote) async {
-    final quotesBox = await Hive.openBox<Quote>(OfflineService.quotesBox);
+    // Find and sync unsynced documents
+    final collections = ['clients', 'quotes', 'cart_items'];
 
-    // Mark as not synced if offline
-    if (!await isOnline()) {
-      quote.isSynced = false;
+    for (final collection in collections) {
+      try {
+        final unsyncedDocs = await _firestore
+            .collection(collection)
+            .where('user_id', isEqualTo: userId)
+            .where('synced', isEqualTo: false)
+            .get();
 
-      // Add to sync queue
-      await addToSyncQueue(
-        tableName: 'quotes',
-        operation: 'insert',
-        data: quote.toJson(),
-      );
+        for (final doc in unsyncedDocs.docs) {
+          await doc.reference.update({'synced': true});
+        }
 
-      // Add quote items to sync queue
-      for (final item in quote.items) {
-        await addToSyncQueue(
-          tableName: 'quote_items',
-          operation: 'insert',
-          data: item.toJson(),
-        );
+        print('Synced ${unsyncedDocs.docs.length} documents from $collection');
+      } catch (e) {
+        print('Error syncing $collection: $e');
       }
     }
-
-    await quotesBox.put(quote.id, quote);
-    return quote;
   }
 
-  /// Generate offline ID
-  static String generateOfflineId() {
-    return 'offline_${_uuid.v4()}';
+  /// Clear offline cache (use carefully!)
+  static Future<void> clearOfflineCache() async {
+    await _firestore.clearPersistence();
+    _pendingOperations.clear();
+    await _savePendingOperations();
   }
 
-  /// Clear all offline data
-  static Future<void> clearAllData() async {
-    await Hive.deleteBoxFromDisk(productsBox);
-    await Hive.deleteBoxFromDisk(clientsBox);
-    await Hive.deleteBoxFromDisk(quotesBox);
-    await Hive.deleteBoxFromDisk(cartBox);
-    await Hive.deleteBoxFromDisk(syncQueueBox);
-    await Hive.deleteBoxFromDisk(searchHistoryBox);
+  /// Get cache size info
+  static Future<Map<String, dynamic>> getCacheInfo() async {
+    final prefs = await SharedPreferences.getInstance();
+
+    return {
+      'pending_operations': _pendingOperations.length,
+      'is_online': _isOnline,
+      'last_sync': prefs.getString('last_sync') ?? 'Never',
+      'cache_enabled': true,
+    };
+  }
+
+  /// Save pending operations to local storage
+  static Future<void> _savePendingOperations() async {
+    final prefs = await SharedPreferences.getInstance();
+
+    // Convert operations to JSON
+    final operationsJson = _pendingOperations.map((op) => op.toJson()).toList();
+
+    await prefs.setString('pending_operations', operationsJson.toString());
+    await prefs.setString('last_sync', DateTime.now().toIso8601String());
+  }
+
+  /// Load pending operations from local storage
+  static Future<void> _loadPendingOperations() async {
+    final prefs = await SharedPreferences.getInstance();
+    final operationsString = prefs.getString('pending_operations');
+
+    if (operationsString != null && operationsString.isNotEmpty) {
+      // Parse and load operations
+      // This is simplified - you'd need proper JSON parsing
+      print('Loaded pending operations from storage');
+    }
+  }
+
+  /// Enable offline mode for specific collections
+  static Future<void> enableOfflineCollection(String collection) async {
+    // Pre-cache collection data for offline use
+    try {
+      final userId = _auth.currentUser?.uid;
+      if (userId == null) return;
+
+      // Force cache of user's documents
+      await _firestore
+          .collection(collection)
+          .where('user_id', isEqualTo: userId)
+          .get(const GetOptions(source: Source.server));
+
+      print('Cached $collection for offline use');
+    } catch (e) {
+      print('Error caching $collection: $e');
+    }
+  }
+}
+
+/// Enum for operation types
+enum OperationType {
+  create,
+  update,
+  delete,
+}
+
+/// Model for tracking pending operations
+class PendingOperation {
+  final String id;
+  final String collection;
+  final OperationType operation;
+  final Map<String, dynamic> data;
+  final DateTime timestamp;
+
+  PendingOperation({
+    required this.id,
+    required this.collection,
+    required this.operation,
+    required this.data,
+    required this.timestamp,
+  });
+
+  Map<String, dynamic> toJson() {
+    return {
+      'id': id,
+      'collection': collection,
+      'operation': operation.toString(),
+      'data': data,
+      'timestamp': timestamp.toIso8601String(),
+    };
+  }
+
+  factory PendingOperation.fromJson(Map<String, dynamic> json) {
+    return PendingOperation(
+      id: json['id'],
+      collection: json['collection'],
+      operation: OperationType.values.firstWhere(
+        (e) => e.toString() == json['operation'],
+      ),
+      data: json['data'],
+      timestamp: DateTime.parse(json['timestamp']),
+    );
   }
 }

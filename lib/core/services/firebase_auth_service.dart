@@ -1,5 +1,4 @@
 // lib/core/services/firebase_auth_service.dart
-import 'package:flutter/foundation.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 
@@ -7,81 +6,95 @@ class FirebaseAuthService {
   final FirebaseAuth _auth = FirebaseAuth.instance;
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
 
+  // Get auth state changes
+  Stream<User?> get authStateChanges => _auth.authStateChanges();
+
   // Get current user
   User? get currentUser => _auth.currentUser;
 
-  // Auth state changes stream
-  Stream<User?> get authStateChanges => _auth.authStateChanges();
-
-  // Sign up with email & password
-  Future<UserCredential> signUp({
+  // Sign in with email and password
+  Future<User?> signInWithEmailAndPassword({
     required String email,
     required String password,
-    String? company,
   }) async {
     try {
-      // Check if this is the first user
-      final usersSnapshot = await _firestore.collection('user_profiles').get();
-      final isFirstUser = usersSnapshot.docs.isEmpty;
+      final credential = await _auth.signInWithEmailAndPassword(
+        email: email,
+        password: password,
+      );
+      return credential.user;
+    } catch (e) {
+      rethrow;
+    }
+  }
 
-      // Create auth user
+  // Create user with email and password
+  Future<User?> createUserWithEmailAndPassword({
+    required String email,
+    required String password,
+    required String name,
+  }) async {
+    try {
       final credential = await _auth.createUserWithEmailAndPassword(
         email: email,
         password: password,
       );
 
-      // Create user profile in Firestore with appropriate role
       if (credential.user != null) {
-        String role = 'distributor';
+        // Update display name
+        await credential.user!.updateDisplayName(name);
 
-        // First user becomes superadmin
-        if (isFirstUser) {
-          role = 'superadmin';
-          debugPrint('🎉 First user registered as SUPER ADMIN: $email');
-        }
-
-        await _firestore
-            .collection('user_profiles')
-            .doc(credential.user!.uid)
-            .set({
-          'id': credential.user!.uid,
-          'email': email,
-          'company': company,
-          'role': role,
-          'created_at': FieldValue.serverTimestamp(),
-          'updated_at': FieldValue.serverTimestamp(),
-        });
+        // Create user profile in Firestore
+        await _createUserProfile(
+          uid: credential.user!.uid,
+          email: email,
+          name: name,
+        );
       }
 
-      return credential;
-    } on FirebaseAuthException catch (e) {
-      if (e.code == 'weak-password') {
-        throw Exception('The password provided is too weak.');
-      } else if (e.code == 'email-already-in-use') {
-        throw Exception('An account already exists for that email.');
-      }
-      throw Exception(e.message ?? 'Sign up failed');
+      return credential.user;
+    } catch (e) {
+      rethrow;
     }
   }
 
-  // Sign in with email & password
-  Future<UserCredential> signIn({
+  // Create user profile in Firestore
+  Future<void> _createUserProfile({
+    required String uid,
     required String email,
-    required String password,
+    required String name,
   }) async {
+    await _firestore.collection('users').doc(uid).set({
+      'uid': uid,
+      'email': email,
+      'name': name,
+      'created_at': FieldValue.serverTimestamp(),
+      'updated_at': FieldValue.serverTimestamp(),
+    });
+  }
+
+  // Get user profile from Firestore
+  Future<Map<String, dynamic>?> getUserProfile(String uid) async {
     try {
-      return await _auth.signInWithEmailAndPassword(
-        email: email,
-        password: password,
-      );
-    } on FirebaseAuthException catch (e) {
-      if (e.code == 'user-not-found') {
-        throw Exception('No user found for that email.');
-      } else if (e.code == 'wrong-password') {
-        throw Exception('Wrong password provided.');
+      final doc = await _firestore.collection('users').doc(uid).get();
+      if (doc.exists) {
+        final data = doc.data()!;
+        data['id'] = doc.id;
+        return data;
       }
-      throw Exception(e.message ?? 'Sign in failed');
+      return null;
+    } catch (e) {
+      return null;
     }
+  }
+
+  // Update user profile
+  Future<void> updateUserProfile({
+    required String uid,
+    required Map<String, dynamic> data,
+  }) async {
+    data['updated_at'] = FieldValue.serverTimestamp();
+    await _firestore.collection('users').doc(uid).update(data);
   }
 
   // Sign out
@@ -89,81 +102,53 @@ class FirebaseAuthService {
     await _auth.signOut();
   }
 
-  // Reset password
-  Future<void> resetPassword(String email) async {
-    try {
-      await _auth.sendPasswordResetEmail(email: email);
-    } on FirebaseAuthException catch (e) {
-      throw Exception(e.message ?? 'Password reset failed');
+  // Send password reset email
+  Future<void> sendPasswordResetEmail(String email) async {
+    await _auth.sendPasswordResetEmail(email: email);
+  }
+
+  // Update password
+  Future<void> updatePassword(String newPassword) async {
+    final user = _auth.currentUser;
+    if (user != null) {
+      await user.updatePassword(newPassword);
     }
   }
 
-  // Get user profile from Firestore
-  Future<Map<String, dynamic>?> getUserProfile(String uid) async {
-    try {
-      final doc = await _firestore.collection('user_profiles').doc(uid).get();
-      return doc.data();
-    } catch (e) {
-      debugPrint('Error getting user profile: $e');
-      return null;
+  // Re-authenticate user
+  Future<void> reauthenticateUser({
+    required String email,
+    required String password,
+  }) async {
+    final user = _auth.currentUser;
+    if (user != null) {
+      final credential = EmailAuthProvider.credential(
+        email: email,
+        password: password,
+      );
+      await user.reauthenticateWithCredential(credential);
     }
   }
 
-  // Update user profile
-  Future<void> updateUserProfile(String uid, Map<String, dynamic> data) async {
-    data['updated_at'] = FieldValue.serverTimestamp();
-    await _firestore.collection('user_profiles').doc(uid).update(data);
-  }
+  // Delete user account
+  Future<void> deleteAccount() async {
+    final user = _auth.currentUser;
+    if (user != null) {
+      // Delete user profile from Firestore
+      await _firestore.collection('users').doc(user.uid).delete();
 
-  // Update user role (admin/superadmin only)
-  Future<void> updateUserRole(String targetUid, String newRole) async {
-    try {
-      // Don't allow changing superadmin role
-      final targetDoc =
-          await _firestore.collection('user_profiles').doc(targetUid).get();
-      if (targetDoc.data()?['role'] == 'superadmin') {
-        throw Exception('Cannot change super admin role');
-      }
-
-      await _firestore.collection('user_profiles').doc(targetUid).update({
-        'role': newRole,
-        'updated_at': FieldValue.serverTimestamp(),
-      });
-    } catch (e) {
-      throw Exception('Failed to update user role: $e');
+      // Delete user account
+      await user.delete();
     }
   }
 
-  // Get all users (admin/superadmin only)
-  Stream<List<Map<String, dynamic>>> getAllUsers() {
-    return _firestore
-        .collection('user_profiles')
-        .orderBy('created_at', descending: true)
-        .snapshots()
-        .map((snapshot) => snapshot.docs.map((doc) {
-              final data = doc.data();
-              data['id'] = doc.id;
-              return data;
-            }).toList());
-  }
-
-  // Delete user (superadmin only)
-  Future<void> deleteUser(String uid) async {
+  // Check if email is already in use
+  Future<bool> isEmailInUse(String email) async {
     try {
-      // Don't allow deleting superadmin
-      final userDoc =
-          await _firestore.collection('user_profiles').doc(uid).get();
-      if (userDoc.data()?['role'] == 'superadmin') {
-        throw Exception('Cannot delete super admin');
-      }
-
-      // Delete from Firestore
-      await _firestore.collection('user_profiles').doc(uid).delete();
-
-      // Note: Deleting from Firebase Auth requires admin SDK
-      // This would typically be done via a Cloud Function
+      final methods = await _auth.fetchSignInMethodsForEmail(email);
+      return methods.isNotEmpty;
     } catch (e) {
-      throw Exception('Failed to delete user: $e');
+      return false;
     }
   }
 }

@@ -1,87 +1,34 @@
-import 'package:hive/hive.dart';
+// lib/core/models/models.dart
+import 'package:cloud_firestore/cloud_firestore.dart';
 
 /// Product Model
-@HiveType(typeId: 0)
-class Product extends HiveObject {
-  @HiveField(0)
+class Product {
   final String id;
-
-  @HiveField(1)
   final String sku;
-
-  @HiveField(2)
   final String? category;
-
-  @HiveField(3)
   final String? subcategory;
-
-  @HiveField(4)
   final String? productType;
-
-  @HiveField(5)
   final String? description;
-
-  @HiveField(6)
   final String? voltage;
-
-  @HiveField(7)
   final String? amperage;
-
-  @HiveField(8)
   final String? phase;
-
-  @HiveField(9)
   final String? frequency;
-
-  @HiveField(10)
   final String? plugType;
-
-  @HiveField(11)
   final String? dimensions;
-
-  @HiveField(12)
   final String? dimensionsMetric;
-
-  @HiveField(13)
   final String? weight;
-
-  @HiveField(14)
   final String? weightMetric;
-
-  @HiveField(15)
   final String? temperatureRange;
-
-  @HiveField(16)
   final String? temperatureRangeMetric;
-
-  @HiveField(17)
   final String? refrigerant;
-
-  @HiveField(18)
   final String? compressor;
-
-  @HiveField(19)
   final String? capacity;
-
-  @HiveField(20)
   final String? doors;
-
-  @HiveField(21)
   final String? shelves;
-
-  @HiveField(22)
   final String? features;
-
-  @HiveField(23)
   final String? certifications;
-
-  @HiveField(24)
   final double? price;
-
-  @HiveField(25)
   final DateTime? createdAt;
-
-  @HiveField(26)
   final DateTime? updatedAt;
 
   Product({
@@ -120,19 +67,20 @@ class Product extends HiveObject {
       sku: json['sku'] ?? '',
       category: json['category'],
       subcategory: json['subcategory'],
-      productType: json['product_type'],
+      productType: json['product_type'] ?? json['productType'],
       description: json['description'],
       voltage: json['voltage'],
       amperage: json['amperage'],
       phase: json['phase'],
       frequency: json['frequency'],
-      plugType: json['plug_type'],
+      plugType: json['plug_type'] ?? json['plugType'],
       dimensions: json['dimensions'],
-      dimensionsMetric: json['dimensions_metric'],
+      dimensionsMetric: json['dimensions_metric'] ?? json['dimensionsMetric'],
       weight: json['weight'],
-      weightMetric: json['weight_metric'],
-      temperatureRange: json['temperature_range'],
-      temperatureRangeMetric: json['temperature_range_metric'],
+      weightMetric: json['weight_metric'] ?? json['weightMetric'],
+      temperatureRange: json['temperature_range'] ?? json['temperatureRange'],
+      temperatureRangeMetric:
+          json['temperature_range_metric'] ?? json['temperatureRangeMetric'],
       refrigerant: json['refrigerant'],
       compressor: json['compressor'],
       capacity: json['capacity'],
@@ -141,12 +89,8 @@ class Product extends HiveObject {
       features: json['features'],
       certifications: json['certifications'],
       price: json['price']?.toDouble(),
-      createdAt: json['created_at'] != null
-          ? DateTime.parse(json['created_at'])
-          : null,
-      updatedAt: json['updated_at'] != null
-          ? DateTime.parse(json['updated_at'])
-          : null,
+      createdAt: _parseDateTime(json['created_at'] ?? json['createdAt']),
+      updatedAt: _parseDateTime(json['updated_at'] ?? json['updatedAt']),
     );
   }
 
@@ -177,8 +121,8 @@ class Product extends HiveObject {
       'features': features,
       'certifications': certifications,
       'price': price,
-      'created_at': createdAt?.toIso8601String(),
-      'updated_at': updatedAt?.toIso8601String(),
+      'created_at': createdAt != null ? Timestamp.fromDate(createdAt!) : null,
+      'updated_at': updatedAt != null ? Timestamp.fromDate(updatedAt!) : null,
     };
   }
 
@@ -187,37 +131,22 @@ class Product extends HiveObject {
 }
 
 /// Client Model
-@HiveType(typeId: 1)
-class Client extends HiveObject {
-  @HiveField(0)
+class Client {
   final String id;
-
-  @HiveField(1)
   final String userId;
-
-  @HiveField(2)
   final String company;
-
-  @HiveField(3)
   final String? contactName;
-
-  @HiveField(4)
   final String? contactEmail;
-
-  @HiveField(5)
   final String? contactNumber;
-
-  @HiveField(6)
+  final String? email;
+  final String? phone;
   final String? address;
-
-  @HiveField(7)
-  final DateTime createdAt;
-
-  @HiveField(8)
-  final DateTime updatedAt;
-
-  @HiveField(9)
-  bool isSynced;
+  final String? city;
+  final String? state;
+  final String? zipCode;
+  final String? notes;
+  final DateTime? createdAt;
+  final DateTime? updatedAt;
 
   Client({
     required this.id,
@@ -226,10 +155,15 @@ class Client extends HiveObject {
     this.contactName,
     this.contactEmail,
     this.contactNumber,
+    this.email,
+    this.phone,
     this.address,
-    required this.createdAt,
-    required this.updatedAt,
-    this.isSynced = true,
+    this.city,
+    this.state,
+    this.zipCode,
+    this.notes,
+    this.createdAt,
+    this.updatedAt,
   });
 
   factory Client.fromJson(Map<String, dynamic> json) {
@@ -240,14 +174,15 @@ class Client extends HiveObject {
       contactName: json['contact_name'],
       contactEmail: json['contact_email'],
       contactNumber: json['contact_number'],
+      email: json['email'] ?? json['contact_email'],
+      phone: json['phone'] ?? json['contact_number'],
       address: json['address'],
-      createdAt: json['created_at'] != null
-          ? DateTime.parse(json['created_at'])
-          : DateTime.now(),
-      updatedAt: json['updated_at'] != null
-          ? DateTime.parse(json['updated_at'])
-          : DateTime.now(),
-      isSynced: json['is_synced'] ?? true,
+      city: json['city'],
+      state: json['state'],
+      zipCode: json['zip_code'] ?? json['zipCode'],
+      notes: json['notes'],
+      createdAt: _parseDateTime(json['created_at'] ?? json['createdAt']),
+      updatedAt: _parseDateTime(json['updated_at'] ?? json['updatedAt']),
     );
   }
 
@@ -257,57 +192,40 @@ class Client extends HiveObject {
       'user_id': userId,
       'company': company,
       'contact_name': contactName,
-      'contact_email': contactEmail,
-      'contact_number': contactNumber,
+      'contact_email': contactEmail ?? email,
+      'contact_number': contactNumber ?? phone,
+      'email': email,
+      'phone': phone,
       'address': address,
-      'created_at': createdAt.toIso8601String(),
-      'updated_at': updatedAt.toIso8601String(),
-      'is_synced': isSynced,
+      'city': city,
+      'state': state,
+      'zip_code': zipCode,
+      'notes': notes,
+      'created_at': createdAt != null
+          ? Timestamp.fromDate(createdAt!)
+          : FieldValue.serverTimestamp(),
+      'updated_at': updatedAt != null
+          ? Timestamp.fromDate(updatedAt!)
+          : FieldValue.serverTimestamp(),
     };
   }
 }
 
 /// Quote Model
-@HiveType(typeId: 2)
-class Quote extends HiveObject {
-  @HiveField(0)
+class Quote {
   final String id;
-
-  @HiveField(1)
   final String userId;
-
-  @HiveField(2)
   final String clientId;
-
-  @HiveField(3)
   final String quoteNumber;
-
-  @HiveField(4)
   final double subtotal;
-
-  @HiveField(5)
   final double taxRate;
-
-  @HiveField(6)
   final double taxAmount;
-
-  @HiveField(7)
   final double totalAmount;
-
-  @HiveField(8)
   final String status;
-
-  @HiveField(9)
   final List<QuoteItem> items;
-
-  @HiveField(10)
-  final DateTime createdAt;
-
-  @HiveField(11)
-  final DateTime updatedAt;
-
-  @HiveField(12)
-  bool isSynced;
+  final Map<String, dynamic>? client;
+  final DateTime? createdAt;
+  final DateTime? updatedAt;
 
   Quote({
     required this.id,
@@ -319,10 +237,10 @@ class Quote extends HiveObject {
     required this.taxAmount,
     required this.totalAmount,
     this.status = 'draft',
-    required this.items,
-    required this.createdAt,
-    required this.updatedAt,
-    this.isSynced = true,
+    this.items = const [],
+    this.client,
+    this.createdAt,
+    this.updatedAt,
   });
 
   factory Quote.fromJson(Map<String, dynamic> json) {
@@ -331,22 +249,18 @@ class Quote extends HiveObject {
       userId: json['user_id'] ?? '',
       clientId: json['client_id'] ?? '',
       quoteNumber: json['quote_number'] ?? '',
-      subtotal: json['subtotal']?.toDouble() ?? 0.0,
-      taxRate: json['tax_rate']?.toDouble() ?? 0.0,
-      taxAmount: json['tax_amount']?.toDouble() ?? 0.0,
-      totalAmount: json['total_amount']?.toDouble() ?? 0.0,
+      subtotal: (json['subtotal'] ?? 0).toDouble(),
+      taxRate: (json['tax_rate'] ?? 0).toDouble(),
+      taxAmount: (json['tax_amount'] ?? 0).toDouble(),
+      totalAmount: (json['total_amount'] ?? 0).toDouble(),
       status: json['status'] ?? 'draft',
       items: (json['quote_items'] as List?)
               ?.map((e) => QuoteItem.fromJson(e))
               .toList() ??
           [],
-      createdAt: json['created_at'] != null
-          ? DateTime.parse(json['created_at'])
-          : DateTime.now(),
-      updatedAt: json['updated_at'] != null
-          ? DateTime.parse(json['updated_at'])
-          : DateTime.now(),
-      isSynced: json['is_synced'] ?? true,
+      client: json['client'],
+      createdAt: _parseDateTime(json['created_at'] ?? json['createdAt']),
+      updatedAt: _parseDateTime(json['updated_at'] ?? json['updatedAt']),
     );
   }
 
@@ -362,36 +276,26 @@ class Quote extends HiveObject {
       'total_amount': totalAmount,
       'status': status,
       'quote_items': items.map((e) => e.toJson()).toList(),
-      'created_at': createdAt.toIso8601String(),
-      'updated_at': updatedAt.toIso8601String(),
-      'is_synced': isSynced,
+      'client': client,
+      'created_at': createdAt != null
+          ? Timestamp.fromDate(createdAt!)
+          : FieldValue.serverTimestamp(),
+      'updated_at': updatedAt != null
+          ? Timestamp.fromDate(updatedAt!)
+          : FieldValue.serverTimestamp(),
     };
   }
 }
 
 /// Quote Item Model
-@HiveType(typeId: 3)
-class QuoteItem extends HiveObject {
-  @HiveField(0)
+class QuoteItem {
   final String id;
-
-  @HiveField(1)
   final String quoteId;
-
-  @HiveField(2)
   final String productId;
-
-  @HiveField(3)
   final int quantity;
-
-  @HiveField(4)
   final double unitPrice;
-
-  @HiveField(5)
   final double totalPrice;
-
-  @HiveField(6)
-  Product? product;
+  final Map<String, dynamic>? product;
 
   QuoteItem({
     required this.id,
@@ -409,10 +313,9 @@ class QuoteItem extends HiveObject {
       quoteId: json['quote_id'] ?? '',
       productId: json['product_id'] ?? '',
       quantity: json['quantity'] ?? 1,
-      unitPrice: json['unit_price']?.toDouble() ?? 0.0,
-      totalPrice: json['total_price']?.toDouble() ?? 0.0,
-      product:
-          json['product'] != null ? Product.fromJson(json['product']) : null,
+      unitPrice: (json['unit_price'] ?? 0).toDouble(),
+      totalPrice: (json['total_price'] ?? 0).toDouble(),
+      product: json['product'],
     );
   }
 
@@ -424,40 +327,21 @@ class QuoteItem extends HiveObject {
       'quantity': quantity,
       'unit_price': unitPrice,
       'total_price': totalPrice,
-      'product': product?.toJson(),
+      'product': product,
     };
   }
 }
 
 /// Cart Item Model
-@HiveType(typeId: 4)
-class CartItem extends HiveObject {
-  @HiveField(0)
+class CartItem {
   final String id;
-
-  @HiveField(1)
   final String userId;
-
-  @HiveField(2)
   final String? clientId;
-
-  @HiveField(3)
   final String productId;
-
-  @HiveField(4)
   int quantity;
-
-  @HiveField(5)
-  Product? product;
-
-  @HiveField(6)
-  final DateTime createdAt;
-
-  @HiveField(7)
-  DateTime updatedAt;
-
-  @HiveField(8)
-  bool isSynced;
+  final Map<String, dynamic>? product;
+  final DateTime? createdAt;
+  DateTime? updatedAt;
 
   CartItem({
     required this.id,
@@ -466,9 +350,8 @@ class CartItem extends HiveObject {
     required this.productId,
     required this.quantity,
     this.product,
-    required this.createdAt,
-    required this.updatedAt,
-    this.isSynced = true,
+    this.createdAt,
+    this.updatedAt,
   });
 
   factory CartItem.fromJson(Map<String, dynamic> json) {
@@ -478,15 +361,9 @@ class CartItem extends HiveObject {
       clientId: json['client_id'],
       productId: json['product_id'] ?? '',
       quantity: json['quantity'] ?? 1,
-      product:
-          json['products'] != null ? Product.fromJson(json['products']) : null,
-      createdAt: json['created_at'] != null
-          ? DateTime.parse(json['created_at'])
-          : DateTime.now(),
-      updatedAt: json['updated_at'] != null
-          ? DateTime.parse(json['updated_at'])
-          : DateTime.now(),
-      isSynced: json['is_synced'] ?? true,
+      product: json['product'] ?? json['products'],
+      createdAt: _parseDateTime(json['created_at'] ?? json['createdAt']),
+      updatedAt: _parseDateTime(json['updated_at'] ?? json['updatedAt']),
     );
   }
 
@@ -497,18 +374,19 @@ class CartItem extends HiveObject {
       'client_id': clientId,
       'product_id': productId,
       'quantity': quantity,
-      'products': product?.toJson(),
-      'created_at': createdAt.toIso8601String(),
-      'updated_at': updatedAt.toIso8601String(),
-      'is_synced': isSynced,
+      'product': product,
+      'created_at': createdAt != null
+          ? Timestamp.fromDate(createdAt!)
+          : FieldValue.serverTimestamp(),
+      'updated_at': updatedAt != null
+          ? Timestamp.fromDate(updatedAt!)
+          : FieldValue.serverTimestamp(),
     };
   }
 
   void updateQuantity(int newQuantity) {
     quantity = newQuantity;
     updatedAt = DateTime.now();
-    isSynced = false;
-    save();
   }
 }
 
@@ -516,35 +394,34 @@ class CartItem extends HiveObject {
 class UserProfile {
   final String id;
   final String email;
-  final String role;
+  final String name;
+  final String? role;
   final String? company;
   final String? phone;
-  final DateTime createdAt;
-  final DateTime updatedAt;
+  final DateTime? createdAt;
+  final DateTime? updatedAt;
 
   UserProfile({
     required this.id,
     required this.email,
+    required this.name,
     this.role = 'distributor',
     this.company,
     this.phone,
-    required this.createdAt,
-    required this.updatedAt,
+    this.createdAt,
+    this.updatedAt,
   });
 
   factory UserProfile.fromJson(Map<String, dynamic> json) {
     return UserProfile(
-      id: json['id'] ?? '',
+      id: json['id'] ?? json['uid'] ?? '',
       email: json['email'] ?? '',
+      name: json['name'] ?? '',
       role: json['role'] ?? 'distributor',
       company: json['company'],
       phone: json['phone'],
-      createdAt: json['created_at'] != null
-          ? DateTime.parse(json['created_at'])
-          : DateTime.now(),
-      updatedAt: json['updated_at'] != null
-          ? DateTime.parse(json['updated_at'])
-          : DateTime.now(),
+      createdAt: _parseDateTime(json['created_at'] ?? json['createdAt']),
+      updatedAt: _parseDateTime(json['updated_at'] ?? json['updatedAt']),
     );
   }
 
@@ -552,11 +429,16 @@ class UserProfile {
     return {
       'id': id,
       'email': email,
+      'name': name,
       'role': role,
       'company': company,
       'phone': phone,
-      'created_at': createdAt.toIso8601String(),
-      'updated_at': updatedAt.toIso8601String(),
+      'created_at': createdAt != null
+          ? Timestamp.fromDate(createdAt!)
+          : FieldValue.serverTimestamp(),
+      'updated_at': updatedAt != null
+          ? Timestamp.fromDate(updatedAt!)
+          : FieldValue.serverTimestamp(),
     };
   }
 
@@ -565,173 +447,19 @@ class UserProfile {
   bool get isDistributor => role == 'distributor';
 }
 
-/// Sync Queue Model for offline changes
-@HiveType(typeId: 5)
-class SyncQueueItem extends HiveObject {
-  @HiveField(0)
-  final String id;
+// Helper function to parse DateTime from various formats
+DateTime? _parseDateTime(dynamic value) {
+  if (value == null) return null;
 
-  @HiveField(1)
-  final String tableName;
-
-  @HiveField(2)
-  final String operation;
-
-  @HiveField(3)
-  final Map<String, dynamic> data;
-
-  @HiveField(4)
-  final DateTime createdAt;
-
-  @HiveField(5)
-  bool synced;
-
-  SyncQueueItem({
-    required this.id,
-    required this.tableName,
-    required this.operation,
-    required this.data,
-    required this.createdAt,
-    this.synced = false,
-  });
-
-  factory SyncQueueItem.fromJson(Map<String, dynamic> json) {
-    return SyncQueueItem(
-      id: json['id'] ?? '',
-      tableName: json['table_name'] ?? '',
-      operation: json['operation'] ?? '',
-      data: json['data'] ?? {},
-      createdAt: json['created_at'] != null
-          ? DateTime.parse(json['created_at'])
-          : DateTime.now(),
-      synced: json['synced'] ?? false,
-    );
+  if (value is Timestamp) {
+    return value.toDate();
+  } else if (value is DateTime) {
+    return value;
+  } else if (value is String) {
+    return DateTime.tryParse(value);
+  } else if (value is int) {
+    return DateTime.fromMillisecondsSinceEpoch(value);
   }
 
-  Map<String, dynamic> toJson() {
-    return {
-      'id': id,
-      'table_name': tableName,
-      'operation': operation,
-      'data': data,
-      'created_at': createdAt.toIso8601String(),
-      'synced': synced,
-    };
-  }
-}
-
-// Hive Adapters - These need to be generated with build_runner
-// For now, create stub adapters that will work temporarily
-class ProductAdapter extends TypeAdapter<Product> {
-  @override
-  final int typeId = 0;
-
-  @override
-  Product read(BinaryReader reader) {
-    // Simplified read - would be generated by build_runner
-    return Product(id: '', sku: '');
-  }
-
-  @override
-  void write(BinaryWriter writer, Product obj) {
-    // Simplified write - would be generated by build_runner
-  }
-}
-
-class ClientAdapter extends TypeAdapter<Client> {
-  @override
-  final int typeId = 1;
-
-  @override
-  Client read(BinaryReader reader) {
-    return Client(
-        id: '',
-        userId: '',
-        company: '',
-        createdAt: DateTime.now(),
-        updatedAt: DateTime.now());
-  }
-
-  @override
-  void write(BinaryWriter writer, Client obj) {}
-}
-
-class QuoteAdapter extends TypeAdapter<Quote> {
-  @override
-  final int typeId = 2;
-
-  @override
-  Quote read(BinaryReader reader) {
-    return Quote(
-        id: '',
-        userId: '',
-        clientId: '',
-        quoteNumber: '',
-        subtotal: 0,
-        taxRate: 0,
-        taxAmount: 0,
-        totalAmount: 0,
-        items: [],
-        createdAt: DateTime.now(),
-        updatedAt: DateTime.now());
-  }
-
-  @override
-  void write(BinaryWriter writer, Quote obj) {}
-}
-
-class QuoteItemAdapter extends TypeAdapter<QuoteItem> {
-  @override
-  final int typeId = 3;
-
-  @override
-  QuoteItem read(BinaryReader reader) {
-    return QuoteItem(
-        id: '',
-        quoteId: '',
-        productId: '',
-        quantity: 0,
-        unitPrice: 0,
-        totalPrice: 0);
-  }
-
-  @override
-  void write(BinaryWriter writer, QuoteItem obj) {}
-}
-
-class CartItemAdapter extends TypeAdapter<CartItem> {
-  @override
-  final int typeId = 4;
-
-  @override
-  CartItem read(BinaryReader reader) {
-    return CartItem(
-        id: '',
-        userId: '',
-        productId: '',
-        quantity: 1,
-        createdAt: DateTime.now(),
-        updatedAt: DateTime.now());
-  }
-
-  @override
-  void write(BinaryWriter writer, CartItem obj) {}
-}
-
-class SyncQueueItemAdapter extends TypeAdapter<SyncQueueItem> {
-  @override
-  final int typeId = 5;
-
-  @override
-  SyncQueueItem read(BinaryReader reader) {
-    return SyncQueueItem(
-        id: '',
-        tableName: '',
-        operation: '',
-        data: {},
-        createdAt: DateTime.now());
-  }
-
-  @override
-  void write(BinaryWriter writer, SyncQueueItem obj) {}
+  return null;
 }

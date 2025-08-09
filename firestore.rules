@@ -1,19 +1,62 @@
 rules_version = '2';
-
 service cloud.firestore {
   match /databases/{database}/documents {
-
-    // This rule allows anyone with your Firestore database reference to view, edit,
-    // and delete all data in your Firestore database. It is useful for getting
-    // started, but it is configured to expire after 30 days because it
-    // leaves your app open to attackers. At that time, all client
-    // requests to your Firestore database will be denied.
-    //
-    // Make sure to write security rules for your app before that time, or else
-    // all client requests to your Firestore database will be denied until you Update
-    // your rules
-    match /{document=**} {
-      allow read, write: if request.time < timestamp.date(2025, 9, 5);
+    // Helper function to check if user is authenticated
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+    
+    // Helper function to check if user owns the document
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+    
+    // Products - everyone can read
+    match /products/{productId} {
+      allow read: if true;
+      allow write: if false; // Only admin through console
+    }
+    
+    // Clients - users can only access their own
+    match /clients/{clientId} {
+      allow read: if isAuthenticated() && 
+        resource.data.user_id == request.auth.uid;
+      allow create: if isAuthenticated() && 
+        request.resource.data.user_id == request.auth.uid;
+      allow update: if isAuthenticated() && 
+        resource.data.user_id == request.auth.uid;
+      allow delete: if isAuthenticated() && 
+        resource.data.user_id == request.auth.uid;
+    }
+    
+    // Cart Items - users can only access their own
+    match /cart_items/{itemId} {
+      allow read: if isAuthenticated() && 
+        resource.data.user_id == request.auth.uid;
+      allow create: if isAuthenticated() && 
+        request.resource.data.user_id == request.auth.uid;
+      allow update: if isAuthenticated() && 
+        resource.data.user_id == request.auth.uid;
+      allow delete: if isAuthenticated() && 
+        resource.data.user_id == request.auth.uid;
+    }
+    
+    // Quotes - users can only access their own
+    match /quotes/{quoteId} {
+      allow read: if isAuthenticated() && 
+        resource.data.user_id == request.auth.uid;
+      allow create: if isAuthenticated() && 
+        request.resource.data.user_id == request.auth.uid;
+      allow update: if isAuthenticated() && 
+        resource.data.user_id == request.auth.uid;
+      allow delete: if isAuthenticated() && 
+        resource.data.user_id == request.auth.uid;
+    }
+    
+    // Quote Items - users can access if they own the quote
+    match /quote_items/{itemId} {
+      allow read: if isAuthenticated();
+      allow write: if isAuthenticated();
     }
   }
 }

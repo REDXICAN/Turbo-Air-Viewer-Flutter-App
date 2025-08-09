@@ -131,11 +131,24 @@ class _MainNavigationShellState extends ConsumerState<MainNavigationShell> {
 
   @override
   Widget build(BuildContext context) {
-    final currentUser = ref.watch(currentUserProvider);
-    final isAdmin = currentUser.valueOrNull?.isAdmin ?? false;
+    // Get the current user profile to check admin status
+    final currentUserProfileAsync = ref.watch(currentUserProfileProvider);
+    final isAdmin = currentUserProfileAsync.when(
+      data: (profile) => profile?.isAdmin ?? false,
+      loading: () => false,
+      error: (_, __) => false,
+    );
+
+    // Get current location for navigation
     final currentLocation = GoRouterState.of(context).uri.toString();
+
+    // Watch cart item count
     final cartItemCountAsync = ref.watch(cartItemCountProvider);
-    final cartItemCount = cartItemCountAsync.valueOrNull ?? 0;
+    final cartItemCount = cartItemCountAsync.when(
+      data: (count) => count,
+      loading: () => 0,
+      error: (_, __) => 0,
+    );
 
     // Update routes if admin
     final routes = isAdmin ? [..._routes, '/admin'] : _routes;

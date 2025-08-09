@@ -15,7 +15,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   final _formKey = GlobalKey<FormState>();
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
-  final _companyController = TextEditingController();
+  final _nameController = TextEditingController();
 
   bool _isLoading = false;
   bool _isSignUp = false;
@@ -25,7 +25,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   void dispose() {
     _emailController.dispose();
     _passwordController.dispose();
-    _companyController.dispose();
+    _nameController.dispose();
     super.dispose();
   }
 
@@ -35,16 +35,17 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     setState(() => _isLoading = true);
 
     try {
-      final authService = ref.read(authServiceProvider);
+      String? error;
 
       if (_isSignUp) {
-        await authService.signUp(
-          email: _emailController.text.trim(),
-          password: _passwordController.text,
-          company: _companyController.text.trim(),
+        final signUp = ref.read(signUpProvider);
+        error = await signUp(
+          _emailController.text.trim(),
+          _passwordController.text,
+          _nameController.text.trim(),
         );
 
-        if (mounted) {
+        if (error == null && mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
               content: Text('Account created successfully! Welcome!'),
@@ -55,21 +56,30 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
           context.go('/');
         }
       } else {
-        await authService.signIn(
-          email: _emailController.text.trim(),
-          password: _passwordController.text,
+        final signIn = ref.read(signInProvider);
+        error = await signIn(
+          _emailController.text.trim(),
+          _passwordController.text,
         );
 
-        if (mounted) {
+        if (error == null && mounted) {
           context.go('/');
         }
+      }
+
+      if (error != null && mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(error),
+            backgroundColor: Colors.red,
+          ),
+        );
       }
     } catch (error) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text(
-                'Error: ${error.toString().replaceAll('Exception: ', '')}'),
+            content: Text('Unexpected error: ${error.toString()}'),
             backgroundColor: Colors.red,
           ),
         );
@@ -188,20 +198,20 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                     ),
                     const SizedBox(height: 16),
 
-                    // Company field (only for signup)
+                    // Name field (only for signup)
                     if (_isSignUp) ...[
                       TextFormField(
-                        controller: _companyController,
+                        controller: _nameController,
                         decoration: InputDecoration(
-                          labelText: 'Company Name',
-                          prefixIcon: const Icon(Icons.business),
+                          labelText: 'Your Name',
+                          prefixIcon: const Icon(Icons.person),
                           border: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(12),
                           ),
                         ),
                         validator: (value) {
                           if (_isSignUp && (value == null || value.isEmpty)) {
-                            return 'Please enter your company name';
+                            return 'Please enter your name';
                           }
                           return null;
                         },
@@ -363,24 +373,34 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
               }
 
               try {
-                final authService = ref.read(authServiceProvider);
-                await authService.resetPassword(email);
+                final resetPassword = ref.read(resetPasswordProvider);
+                final error = await resetPassword(email);
 
                 if (!dialogContext.mounted) return;
                 Navigator.pop(dialogContext);
 
                 if (!mounted) return;
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(
-                    content: Text('Password reset email sent!'),
-                    backgroundColor: Colors.green,
-                  ),
-                );
+
+                if (error == null) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text('Password reset email sent!'),
+                      backgroundColor: Colors.green,
+                    ),
+                  );
+                } else {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text(error),
+                      backgroundColor: Colors.red,
+                    ),
+                  );
+                }
               } catch (e) {
                 if (!mounted) return;
                 ScaffoldMessenger.of(context).showSnackBar(
                   SnackBar(
-                    content: Text('Error: ${e.toString()}'),
+                    content: Text('Unexpected error: ${e.toString()}'),
                     backgroundColor: Colors.red,
                   ),
                 );
