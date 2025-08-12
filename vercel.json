@@ -1,8 +1,13 @@
 {
-  "buildCommand": "flutter build web --release",
-  "installCommand": "git clone https://github.com/flutter/flutter.git -b stable && export PATH=\"$PATH:$PWD/flutter/bin\" && flutter pub get",
+  "framework": null,
+  "buildCommand": "bash build-vercel.sh",
   "outputDirectory": "build/web",
+  "installCommand": "bash install-flutter.sh",
   "rewrites": [
     { "source": "/(.*)", "destination": "/index.html" }
-  ]
+  ],
+  "env": {
+    "FLUTTER_ROOT": "./flutter",
+    "PATH": "$PATH:$FLUTTER_ROOT/bin"
+  }
 }
