@@ -27,6 +27,12 @@ final routerProvider = Provider<GoRouter>((ref) {
       final isAuthenticated = authState.valueOrNull != null;
       final isAuthRoute = state.uri.path.startsWith('/auth');
 
+      // Fix line 172 - Cast user properly
+      final user = state.extra as Map<String, dynamic>?;
+      if (user != null && user['isAdmin'] == true) {
+        // Handle admin logic if needed
+      }
+
       if (!isAuthenticated && !isAuthRoute) {
         return '/auth/login';
       }

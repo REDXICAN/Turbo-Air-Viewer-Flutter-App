@@ -1,90 +1,69 @@
-name: turbo_air
-description: Turbo Air Equipment Viewer
+name: turbots
+description: A new Flutter project.
 publish_to: 'none'
 version: 1.0.0+1
 
 environment:
-  sdk: '>=3.0.0 <4.0.0'
+  sdk: '>=3.1.0 <4.0.0'
 
 dependencies:
   flutter:
     sdk: flutter
   
-  # Firebase Services - Realtime Database focused
-  firebase_core: ^3.8.0
-  firebase_auth: ^5.3.3
-  firebase_database: ^11.2.0  # Realtime Database instead of Firestore
-  firebase_storage: ^12.3.7
-  firebase_analytics: ^11.3.6
-  firebase_crashlytics: ^4.2.0
-  firebase_performance: ^0.10.0+10
-  firebase_messaging: ^15.1.5
-  firebase_remote_config: ^5.1.5
+  # Firebase
+  firebase_core: ^2.24.2
+  firebase_auth: ^4.16.0
+  firebase_database: ^10.4.0
+  cloud_firestore: ^4.14.0
+  firebase_storage: ^11.6.0
   
   # State Management
-  flutter_riverpod: ^2.4.0
-  riverpod_annotation: ^2.3.0
+  provider: ^6.1.1
   
-  # Local Storage - Hive for offline support
+  # Local Storage
   hive: ^2.2.3
   hive_flutter: ^1.1.0
-  path_provider: ^2.1.0
   
   # Networking
-  dio: ^5.3.0
-  connectivity_plus: ^5.0.0
-  http: ^1.1.0
-  shared_preferences: ^2.2.0
+  connectivity_plus: ^5.0.2
   
-  # Navigation
-  go_router: ^12.0.0
-  
-  # UI Components
-  flutter_adaptive_scaffold: ^0.1.0
-  cached_network_image: ^3.3.0
-  shimmer: ^3.0.0
-  
-  # PDF Generation
-  pdf: ^3.10.0
-  printing: ^5.11.0
-  
-  # Excel
-  excel: ^4.0.0
-  
-  # File Operations
-  file_picker: ^6.0.0
-  share_plus: ^7.2.0
+  # UI/UX
+  cupertino_icons: ^1.0.6
+  fl_chart: ^0.66.0
   
   # Utilities
-  intl: ^0.18.0
-  uuid: ^4.0.0
-  crypto: ^3.0.0
-  collection: ^1.17.0
-  json_annotation: ^4.8.1
-  
-  # Email
+  pdf: ^3.10.7
+  printing: ^5.12.0
+  share_plus: ^7.2.1
+  path_provider: ^2.1.1
+  intl: ^0.18.1
+  excel: ^4.0.0
   mailer: ^6.0.1
-  
-  # Platform specific
-  flutter_local_notifications: ^16.0.0
-  
-  # Icons
-  cupertino_icons: ^1.0.6
-  flutter_vector_icons: ^2.0.0
+  provider: ^6.1.2
+  fl_chart: ^0.69.2
+  hive: ^2.2.3
+  hive_flutter: ^1.1.0
+
+  # Routing
+  go_router: ^12.1.3
 
 dev_dependencies:
   flutter_test:
     sdk: flutter
-  flutter_lints: ^3.0.0
-  riverpod_generator: ^2.3.0
-  build_runner: ^2.4.0
-  json_serializable: ^6.7.0
-  hive_generator: ^2.0.0
+  flutter_lints: ^3.0.1
+  hive_generator: ^2.0.1
+  build_runner: ^2.4.7
 
 flutter:
   uses-material-design: true
   
   assets:
     - assets/images/
-    - assets/logos/
-    - assets/screenshots/
+    - assets/icons/
+  
+  fonts:
+    - family: Roboto
+      fonts:
+        - asset: fonts/Roboto-Regular.ttf
+        - asset: fonts/Roboto-Bold.ttf
+          weight: 700

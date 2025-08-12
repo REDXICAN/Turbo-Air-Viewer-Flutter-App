@@ -1,252 +1,238 @@
 // lib/core/services/offline_service.dart
+import 'dart:async';
 import 'package:hive_flutter/hive_flutter.dart';
 import 'package:connectivity_plus/connectivity_plus.dart';
-import 'dart:async';
-import 'dart:convert';
+import '../models/models.dart';
+
+enum SyncStatus { idle, syncing, success, error }
+
+enum OperationType { create, update, delete }
+
+class PendingOperation {
+  final String id;
+  final String collection;
+  final OperationType operation;
+  final Map<String, dynamic> data;
+  final DateTime timestamp;
+  int retryCount;
+
+  PendingOperation({
+    required this.id,
+    required this.collection,
+    required this.operation,
+    required this.data,
+    required this.timestamp,
+    this.retryCount = 0,
+  });
+
+  Map<String, dynamic> toMap() {
+    return {
+      'id': id,
+      'collection': collection,
+      'operation': operation.toString(),
+      'data': data,
+      'timestamp': timestamp.toIso8601String(),
+      'retryCount': retryCount,
+    };
+  }
+
+  factory PendingOperation.fromMap(Map<String, dynamic> map) {
+    return PendingOperation(
+      id: map['id'],
+      collection: map['collection'],
+      operation: OperationType.values.firstWhere(
+        (e) => e.toString() == map['operation'],
+      ),
+      data: Map<String, dynamic>.from(map['data']),
+      timestamp: DateTime.parse(map['timestamp']),
+      retryCount: map['retryCount'] ?? 0,
+    );
+  }
+}
 
 class OfflineService {
-  static const String _offlineQueueBox = 'offline_queue';
-  static const String _cacheBox = 'cache_data';
-  static const String _productsBox = 'products_cache';
-  static const String _clientsBox = 'clients_cache';
-  static const String _quotesBox = 'quotes_cache';
-  static const String _cartBox = 'cart_cache';
+  static final OfflineService _instance = OfflineService._internal();
+  factory OfflineService() => _instance;
+  OfflineService._internal();
 
-  static late Box _queueBox;
-  static late Box _cacheBox;
-  static late Box _productsBox;
-  static late Box _clientsBox;
-  static late Box _quotesBox;
-  static late Box _cartBox;
+  late Box<dynamic> _cacheBox;
+  late Box<dynamic> _productsBox;
+  late Box<dynamic> _clientsBox;
+  late Box<dynamic> _quotesBox;
+  late Box<dynamic> _cartBox;
+  late Box<dynamic> _pendingOperationsBox;
 
-  static StreamController<bool> _connectivityController =
-      StreamController<bool>.broadcast();
-  static Stream<bool> get connectivityStream => _connectivityController.stream;
+  final _connectivity = Connectivity();
+  final _connectivityController = StreamController<bool>.broadcast();
+  bool _isOnline = true;
 
-  static bool _isOnline = true;
-  static bool get isOnline => _isOnline;
+  final List<PendingOperation> _pendingOperations = [];
+  final _queueController = StreamController<List<PendingOperation>>.broadcast();
 
-  // Initialize Hive and open boxes
-  static Future<void> initialize() async {
-    await Hive.initFlutter();
+  Stream<bool> get connectionStream => _connectivityController.stream;
+  Stream<List<PendingOperation>> get queueStream => _queueController.stream;
+  List<PendingOperation> get pendingOperations => _pendingOperations;
 
-    // Open boxes
-    _queueBox = await Hive.openBox(_offlineQueueBox);
-    _cacheBox = await Hive.openBox(_cacheBox);
-    _productsBox = await Hive.openBox(_productsBox);
-    _clientsBox = await Hive.openBox(_clientsBox);
-    _quotesBox = await Hive.openBox(_quotesBox);
-    _cartBox = await Hive.openBox(_cartBox);
+  bool get isOnline => _isOnline;
 
-    // Monitor connectivity
-    Connectivity()
-        .onConnectivityChanged
-        .listen((List<ConnectivityResult> result) {
-      _isOnline = !result.contains(ConnectivityResult.none);
+  SyncStatus _syncStatus = SyncStatus.idle;
+  SyncStatus get syncStatus => _syncStatus;
+
+  Future<void> initialize() async {
+    _cacheBox = await Hive.openBox('cache');
+    _productsBox = await Hive.openBox('products');
+    _clientsBox = await Hive.openBox('clients');
+    _quotesBox = await Hive.openBox('quotes');
+    _cartBox = await Hive.openBox('cart');
+    _pendingOperationsBox = await Hive.openBox('pendingOperations');
+
+    // Load pending operations
+    await _loadPendingOperations();
+
+    // Listen to connectivity changes
+    _connectivity.onConnectivityChanged
+        .listen((List<ConnectivityResult> results) {
+      final wasOffline = !_isOnline;
+      _isOnline = results.any((result) => result != ConnectivityResult.none);
       _connectivityController.add(_isOnline);
 
-      if (_isOnline) {
-        _processPendingQueue();
+      if (_isOnline && wasOffline) {
+        syncPendingChanges();
       }
     });
 
     // Check initial connectivity
-    final connectivityResult = await Connectivity().checkConnectivity();
-    _isOnline = !connectivityResult.contains(ConnectivityResult.none);
+    final connectivityResult = await _connectivity.checkConnectivity();
+    _isOnline =
+        connectivityResult.any((result) => result != ConnectivityResult.none);
   }
 
-  // Queue operations for offline sync
-  static Future<void> queueOperation({
-    required String type,
-    required String operation,
-    required Map<String, dynamic> data,
-  }) async {
-    final timestamp = DateTime.now().toIso8601String();
-    final queueItem = {
-      'id': '${type}_${DateTime.now().millisecondsSinceEpoch}',
-      'type': type,
-      'operation': operation,
-      'data': data,
-      'timestamp': timestamp,
-      'retryCount': 0,
-    };
-
-    await _queueBox.add(queueItem);
+  Future<void> _loadPendingOperations() async {
+    final operations = _pendingOperationsBox.values.toList();
+    _pendingOperations.clear();
+    for (var op in operations) {
+      _pendingOperations
+          .add(PendingOperation.fromMap(Map<String, dynamic>.from(op)));
+    }
+    _queueController.add(_pendingOperations);
   }
 
-  // Process pending queue when online
-  static Future<void> _processPendingQueue() async {
-    if (!_isOnline || _queueBox.isEmpty) return;
+  // Products
+  Future<void> saveProduct(Product product) async {
+    await _productsBox.put(product.id, product.toMap());
+  }
 
-    final List<int> keysToRemove = [];
+  List<Product> getProducts() {
+    return _productsBox.keys.map((key) {
+      final data = _productsBox.get(key);
+      return Product.fromMap(Map<String, dynamic>.from(data));
+    }).toList();
+  }
 
-    for (int i = 0; i < _queueBox.length; i++) {
-      final item = _queueBox.getAt(i);
-      if (item != null) {
-        try {
-          await _processQueueItem(item);
-          keysToRemove.add(i);
-        } catch (e) {
-          // Increment retry count
-          item['retryCount'] = (item['retryCount'] ?? 0) + 1;
+  // Clients
+  Future<void> saveClient(Client client) async {
+    await _clientsBox.put(client.id, client.toMap());
+  }
 
-          // Remove if too many retries
-          if (item['retryCount'] > 3) {
-            keysToRemove.add(i);
-          } else {
-            await _queueBox.putAt(i, item);
-          }
+  List<Client> getClients() {
+    return _clientsBox.keys.map((key) {
+      final data = _clientsBox.get(key);
+      return Client.fromMap(Map<String, dynamic>.from(data));
+    }).toList();
+  }
+
+  // Quotes
+  Future<void> saveQuote(Quote quote) async {
+    await _quotesBox.put(quote.id, quote.toMap());
+  }
+
+  List<Quote> getQuotes() {
+    return _quotesBox.keys.map((key) {
+      final data = _quotesBox.get(key);
+      return Quote.fromMap(Map<String, dynamic>.from(data));
+    }).toList();
+  }
+
+  // Cart
+  Future<void> saveCart(List<CartItem> items) async {
+    await _cartBox.clear();
+    for (var item in items) {
+      await _cartBox.put(item.productId, item.toMap());
+    }
+  }
+
+  List<CartItem> getCart() {
+    return _cartBox.keys.map((key) {
+      final data = _cartBox.get(key);
+      return CartItem.fromMap(Map<String, dynamic>.from(data));
+    }).toList();
+  }
+
+  // Sync methods
+  Future<void> syncPendingChanges() async {
+    if (!_isOnline || _pendingOperations.isEmpty) return;
+
+    _syncStatus = SyncStatus.syncing;
+
+    for (var operation in List.from(_pendingOperations)) {
+      try {
+        // Here you would sync with Firebase/Supabase
+        // For now, just remove from queue
+        _pendingOperations.remove(operation);
+        await _pendingOperationsBox.delete(operation.id);
+      } catch (e) {
+        operation.retryCount++;
+        if (operation.retryCount > 3) {
+          _pendingOperations.remove(operation);
+          await _pendingOperationsBox.delete(operation.id);
         }
       }
     }
 
-    // Remove processed items (in reverse order to maintain indices)
-    for (int key in keysToRemove.reversed) {
-      await _queueBox.deleteAt(key);
-    }
+    _syncStatus = SyncStatus.success;
+    _queueController.add(_pendingOperations);
   }
 
-  // Process individual queue item
-  static Future<void> _processQueueItem(Map<dynamic, dynamic> item) async {
-    final type = item['type'];
-    final operation = item['operation'];
-    final data = Map<String, dynamic>.from(item['data']);
-
-    // Process based on type and operation
-    // This would integrate with your RealtimeDatabaseService
-    switch (type) {
-      case 'client':
-        await _processClientOperation(operation, data);
-        break;
-      case 'cart':
-        await _processCartOperation(operation, data);
-        break;
-      case 'quote':
-        await _processQuoteOperation(operation, data);
-        break;
-    }
+  Future<void> syncWithFirebase() async {
+    // Sync implementation
+    await syncPendingChanges();
   }
 
-  static Future<void> _processClientOperation(
-      String operation, Map<String, dynamic> data) async {
-    // Implement client sync operations
-    // This would call your RealtimeDatabaseService methods
+  Future<bool> hasOfflineData() async {
+    return _pendingOperations.isNotEmpty;
   }
 
-  static Future<void> _processCartOperation(
-      String operation, Map<String, dynamic> data) async {
-    // Implement cart sync operations
+  Future<int> getSyncQueueCount() async {
+    return _pendingOperations.length;
   }
 
-  static Future<void> _processQuoteOperation(
-      String operation, Map<String, dynamic> data) async {
-    // Implement quote sync operations
+  Future<Map<String, dynamic>> getCacheInfo() async {
+    return {
+      'products': _productsBox.length,
+      'clients': _clientsBox.length,
+      'quotes': _quotesBox.length,
+      'cart': _cartBox.length,
+      'pending': _pendingOperations.length,
+    };
   }
 
-  // Cache management methods
-  static Future<void> cacheProducts(List<Map<String, dynamic>> products) async {
-    for (final product in products) {
-      await _productsBox.put(product['id'], jsonEncode(product));
-    }
-  }
-
-  static List<Map<String, dynamic>> getCachedProducts() {
-    final List<Map<String, dynamic>> products = [];
-    for (final key in _productsBox.keys) {
-      final productJson = _productsBox.get(key);
-      if (productJson != null) {
-        products.add(Map<String, dynamic>.from(jsonDecode(productJson)));
-      }
-    }
-    return products;
-  }
-
-  static Future<void> cacheClients(List<Map<String, dynamic>> clients) async {
-    for (final client in clients) {
-      await _clientsBox.put(client['id'], jsonEncode(client));
-    }
-  }
-
-  static List<Map<String, dynamic>> getCachedClients() {
-    final List<Map<String, dynamic>> clients = [];
-    for (final key in _clientsBox.keys) {
-      final clientJson = _clientsBox.get(key);
-      if (clientJson != null) {
-        clients.add(Map<String, dynamic>.from(jsonDecode(clientJson)));
-      }
-    }
-    return clients;
-  }
-
-  static Future<void> cacheQuotes(List<Map<String, dynamic>> quotes) async {
-    for (final quote in quotes) {
-      await _quotesBox.put(quote['id'], jsonEncode(quote));
-    }
-  }
-
-  static List<Map<String, dynamic>> getCachedQuotes() {
-    final List<Map<String, dynamic>> quotes = [];
-    for (final key in _quotesBox.keys) {
-      final quoteJson = _quotesBox.get(key);
-      if (quoteJson != null) {
-        quotes.add(Map<String, dynamic>.from(jsonDecode(quoteJson)));
-      }
-    }
-    return quotes;
-  }
-
-  static Future<void> cacheCartItems(List<Map<String, dynamic>> items) async {
-    await _cartBox.clear();
-    for (int i = 0; i < items.length; i++) {
-      await _cartBox.put(i, jsonEncode(items[i]));
-    }
-  }
-
-  static List<Map<String, dynamic>> getCachedCartItems() {
-    final List<Map<String, dynamic>> items = [];
-    for (final key in _cartBox.keys) {
-      final itemJson = _cartBox.get(key);
-      if (itemJson != null) {
-        items.add(Map<String, dynamic>.from(jsonDecode(itemJson)));
-      }
-    }
-    return items;
-  }
-
-  // Clear all caches
-  static Future<void> clearCache() async {
+  Future<void> clearAll() async {
     await _cacheBox.clear();
     await _productsBox.clear();
     await _clientsBox.clear();
     await _quotesBox.clear();
     await _cartBox.clear();
+    _pendingOperations.clear();
+    _queueController.add(_pendingOperations);
   }
 
-  // Clear offline queue
-  static Future<void> clearQueue() async {
-    await _queueBox.clear();
-  }
-
-  // Get pending operations count
-  static int getPendingOperationsCount() {
-    return _queueBox.length;
-  }
-
-  // Sync all data
-  static Future<void> syncAll() async {
-    if (_isOnline) {
-      await _processPendingQueue();
-    }
-  }
-
-  // Close all boxes
-  static Future<void> dispose() async {
-    await _queueBox.close();
+  Future<void> dispose() async {
+    await _connectivityController.close();
+    await _queueController.close();
     await _cacheBox.close();
     await _productsBox.close();
     await _clientsBox.close();
     await _quotesBox.close();
     await _cartBox.close();
-    _connectivityController.close();
   }
 }
