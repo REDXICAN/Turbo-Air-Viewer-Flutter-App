@@ -4,7 +4,13 @@
       "Bash(flutter analyze:*)",
       "mcp__ide__getDiagnostics",
       "Bash(dir:*)",
-      "Bash(grep:*)"
+      "Bash(grep:*)",
+      "Bash(mkdir:*)",
+      "WebSearch",
+      "WebFetch(domain:pub.dev)",
+      "Bash(flutter:*)",
+      "Bash(dart analyze:*)",
+      "Bash(firebase deploy:*)"
     ],
     "deny": [],
     "ask": []

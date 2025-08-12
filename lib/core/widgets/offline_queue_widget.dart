@@ -49,14 +49,14 @@ class _OfflineStatusWidgetState extends State<OfflineStatusWidget>
       children: [
         widget.child,
         StreamBuilder<bool>(
-          stream: OfflineService.connectionStream,
-          initialData: OfflineService.isOnline,
+          stream: OfflineService.staticConnectionStream,
+          initialData: OfflineService.staticIsOnline,
           builder: (context, connectionSnapshot) {
             final isOnline = connectionSnapshot.data ?? true;
 
             return StreamBuilder<List<PendingOperation>>(
-              stream: OfflineService.queueStream,
-              initialData: OfflineService.pendingOperations,
+              stream: OfflineService.staticQueueStream,
+              initialData: OfflineService.staticPendingOperations,
               builder: (context, queueSnapshot) {
                 final pendingOps = queueSnapshot.data ?? [];
 
@@ -393,8 +393,8 @@ class ConnectionBadge extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return StreamBuilder<bool>(
-      stream: OfflineService.connectionStream,
-      initialData: OfflineService.isOnline,
+      stream: OfflineService.staticConnectionStream,
+      initialData: OfflineService.staticIsOnline,
       builder: (context, snapshot) {
         final isOnline = snapshot.data ?? true;
 
@@ -403,7 +403,7 @@ class ConnectionBadge extends StatelessWidget {
         }
 
         return StreamBuilder<List<PendingOperation>>(
-          stream: OfflineService.queueStream,
+          stream: OfflineService.staticQueueStream,
           builder: (context, queueSnapshot) {
             final pendingCount = queueSnapshot.data?.length ?? 0;
 

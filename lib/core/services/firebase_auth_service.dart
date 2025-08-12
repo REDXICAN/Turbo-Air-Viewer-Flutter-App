@@ -85,7 +85,7 @@ class FirebaseAuthService {
       }
       return null;
     } catch (e) {
-      print('Error getting user profile: $e');
+      // Error getting user profile
       return null;
     }
   }

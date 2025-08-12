@@ -1,0 +1,54 @@
+{
+  "rules": {
+    ".read": "auth != null",
+    ".write": "auth != null",
+    
+    "products": {
+      ".read": true,
+      ".write": "auth != null && auth.token.email == 'andres@turboairmexico.com'",
+      ".indexOn": ["category", "subcategory", "sku", "price"]
+    },
+    
+    "clients": {
+      "$uid": {
+        ".read": "$uid === auth.uid",
+        ".write": "$uid === auth.uid",
+        ".indexOn": ["company", "contact_name", "email"]
+      }
+    },
+    
+    "quotes": {
+      "$uid": {
+        ".read": "$uid === auth.uid",
+        ".write": "$uid === auth.uid",
+        ".indexOn": ["quote_number", "client_id", "created_at", "status"]
+      }
+    },
+    
+    "cart_items": {
+      "$uid": {
+        ".read": "$uid === auth.uid",
+        ".write": "$uid === auth.uid"
+      }
+    },
+    
+    "user_profiles": {
+      "$uid": {
+        ".read": "$uid === auth.uid || auth.token.email == 'andres@turboairmexico.com'",
+        ".write": "$uid === auth.uid || auth.token.email == 'andres@turboairmexico.com'"
+      }
+    },
+    
+    "search_history": {
+      "$uid": {
+        ".read": "$uid === auth.uid",
+        ".write": "$uid === auth.uid"
+      }
+    },
+    
+    "app_settings": {
+      ".read": true,
+      ".write": "auth != null && auth.token.email == 'andres@turboairmexico.com'"
+    }
+  }
+}

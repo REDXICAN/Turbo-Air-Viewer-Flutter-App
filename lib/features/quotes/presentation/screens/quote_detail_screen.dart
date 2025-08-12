@@ -27,16 +27,15 @@ final quoteDetailProvider =
 
   return Quote(
     id: quoteData['id'],
-    userId: quoteData['user_id'],
     clientId: quoteData['client_id'],
     quoteNumber: quoteData['quote_number'],
     subtotal: (quoteData['subtotal'] ?? 0).toDouble(),
-    taxRate: (quoteData['tax_rate'] ?? 0).toDouble(),
-    taxAmount: (quoteData['tax_amount'] ?? 0).toDouble(),
-    totalAmount: (quoteData['total_amount'] ?? 0).toDouble(),
+    tax: (quoteData['tax_amount'] ?? 0).toDouble(),
+    total: (quoteData['total_amount'] ?? 0).toDouble(),
     status: quoteData['status'] ?? 'draft',
     items: items,
-    client: clientData,
+    client: clientData != null ? Client.fromMap(clientData) : null,
+    createdBy: quoteData['user_id'] ?? '',
     createdAt: quoteData['created_at'] != null
         ? DateTime.fromMillisecondsSinceEpoch(quoteData['created_at'])
         : DateTime.now(),
@@ -65,9 +64,9 @@ class QuoteDetailScreen extends ConsumerWidget {
         backgroundColor: theme.primaryColor,
         foregroundColor: theme.appBarTheme.foregroundColor,
         actions: [
-          PopupMenuButton(
-            itemBuilder: (context) => [
-              const PopupMenuItem(
+          PopupMenuButton<String>(
+            itemBuilder: (context) => <PopupMenuEntry<String>>[
+              const PopupMenuItem<String>(
                 value: 'email',
                 child: Row(
                   children: [
@@ -77,7 +76,7 @@ class QuoteDetailScreen extends ConsumerWidget {
                   ],
                 ),
               ),
-              const PopupMenuItem(
+              const PopupMenuItem<String>(
                 value: 'pdf',
                 child: Row(
                   children: [
@@ -87,7 +86,7 @@ class QuoteDetailScreen extends ConsumerWidget {
                   ],
                 ),
               ),
-              const PopupMenuItem(
+              const PopupMenuItem<String>(
                 value: 'excel',
                 child: Row(
                   children: [
@@ -161,8 +160,7 @@ class QuoteDetailScreen extends ConsumerWidget {
                                 ),
                                 const SizedBox(height: 4),
                                 Text(
-                                  dateFormat.format(
-                                      quote.createdAt ?? DateTime.now()),
+                                  dateFormat.format(quote.createdAt),
                                   style: theme.textTheme.bodyMedium?.copyWith(
                                     color: Colors.grey,
                                   ),
@@ -200,16 +198,16 @@ class QuoteDetailScreen extends ConsumerWidget {
                         const SizedBox(height: 16),
                         if (quote.client != null) ...[
                           _buildInfoRow(
-                              'Company', quote.client!['company'] ?? 'N/A'),
-                          if (quote.client!['contact_name'] != null)
+                              'Company', quote.client!.company),
+                          if (quote.client!.contactName.isNotEmpty)
                             _buildInfoRow(
-                                'Contact', quote.client!['contact_name']),
-                          if (quote.client!['email'] != null)
-                            _buildInfoRow('Email', quote.client!['email']),
-                          if (quote.client!['phone'] != null)
-                            _buildInfoRow('Phone', quote.client!['phone']),
-                          if (quote.client!['address'] != null)
-                            _buildInfoRow('Address', quote.client!['address']),
+                                'Contact', quote.client!.contactName),
+                          if (quote.client!.email.isNotEmpty)
+                            _buildInfoRow('Email', quote.client!.email),
+                          if (quote.client!.phone.isNotEmpty)
+                            _buildInfoRow('Phone', quote.client!.phone),
+                          if (quote.client!.address != null && quote.client!.address!.isNotEmpty)
+                            _buildInfoRow('Address', quote.client!.address!),
                         ] else
                           const Text('No client information'),
                       ],
@@ -264,8 +262,8 @@ class QuoteDetailScreen extends ConsumerWidget {
                             'Subtotal', currencyFormat.format(quote.subtotal)),
                         const SizedBox(height: 8),
                         _buildTotalRow(
-                          'Tax (${quote.taxRate.toStringAsFixed(1)}%)',
-                          currencyFormat.format(quote.taxAmount),
+                          'Tax',
+                          currencyFormat.format(quote.tax),
                         ),
                         const Divider(height: 24),
                         _buildTotalRow(
@@ -420,8 +418,7 @@ class QuoteDetailScreen extends ConsumerWidget {
           // Product image thumbnail
           if (item.product != null)
             ProductImageHelper.buildProductThumbnail(
-              sku: item.product!['sku'] ?? '',
-              size: 50,
+              item.product!.sku ?? '',
             ),
           const SizedBox(width: 12),
           // Product details
@@ -430,11 +427,11 @@ class QuoteDetailScreen extends ConsumerWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  item.product?['sku'] ?? 'Unknown Product',
+                  item.product?.sku ?? 'Unknown Product',
                   style: const TextStyle(fontWeight: FontWeight.bold),
                 ),
                 Text(
-                  item.product?['product_type'] ?? '',
+                  item.product?.productType ?? '',
                   style: TextStyle(
                     fontSize: 12,
                     color: Colors.grey[600],

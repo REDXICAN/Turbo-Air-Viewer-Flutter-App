@@ -1090,7 +1090,7 @@ class ProductImageHelper {
       child: Icon(
         Icons.inventory_2,
         color: Colors.grey[400],
-        size: (width \!= null && height \!= null)
+        size: (width != null && height != null)
             ? (width < height ? width * 0.5 : height * 0.5)
             : 40,
       ),

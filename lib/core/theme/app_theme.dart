@@ -169,8 +169,8 @@ class AppTheme {
         indicatorColor: isDark
             ? const Color(0xFF4A6EC5).withOpacity(0.2)
             : const Color(0xFF20429C).withOpacity(0.1),
-        labelTextStyle: MaterialStateProperty.resolveWith((states) {
-          if (states.contains(MaterialState.selected)) {
+        labelTextStyle: WidgetStateProperty.resolveWith((states) {
+          if (states.contains(WidgetState.selected)) {
             return TextStyle(
               fontSize: 12,
               fontWeight: FontWeight.w600,
@@ -183,8 +183,8 @@ class AppTheme {
             color: isDark ? Colors.grey[600] : Colors.grey[700],
           );
         }),
-        iconTheme: MaterialStateProperty.resolveWith((states) {
-          if (states.contains(MaterialState.selected)) {
+        iconTheme: WidgetStateProperty.resolveWith((states) {
+          if (states.contains(WidgetState.selected)) {
             return IconThemeData(
               color: isDark ? const Color(0xFF4A6EC5) : const Color(0xFF20429C),
             );

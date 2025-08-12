@@ -2,6 +2,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import '../../../../core/services/sample_data_service.dart';
+import '../../../../core/config/env_config.dart';
 import '../providers/auth_provider.dart';
 
 class LoginScreen extends ConsumerStatefulWidget {
@@ -27,6 +29,68 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     _passwordController.dispose();
     _nameController.dispose();
     super.dispose();
+  }
+
+  Future<void> _handleDemoLogin() async {
+    setState(() => _isLoading = true);
+
+    try {
+      // Create a demo account with timestamp to ensure uniqueness
+      final timestamp = DateTime.now().millisecondsSinceEpoch;
+      final demoEmail = 'demo_$timestamp@turboair.com';
+      final demoPassword = EnvConfig.demoPassword;
+      final demoName = 'Demo User';
+
+      // First create the demo account
+      final signUp = ref.read(signUpProvider);
+      final signUpError = await signUp(demoEmail, demoPassword, demoName);
+
+      if (signUpError != null && mounted) {
+        // If signup failed, try to sign in (account might exist)
+        final signIn = ref.read(signInProvider);
+        final signInError = await signIn(demoEmail, demoPassword);
+        
+        if (signInError != null && mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Demo login failed: $signInError'),
+              backgroundColor: Colors.red,
+            ),
+          );
+          return;
+        }
+      }
+
+      // Wait a moment for authentication to complete
+      await Future.delayed(const Duration(seconds: 1));
+
+      // Initialize sample data for the demo account
+      await SampleDataService.initializeSampleData();
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Welcome to the demo! Sample data has been loaded.'),
+            backgroundColor: Colors.green,
+            duration: Duration(seconds: 3),
+          ),
+        );
+        context.go('/');
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Demo setup failed: ${e.toString()}'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _isLoading = false);
+      }
+    }
   }
 
   Future<void> _handleAuth() async {
@@ -380,6 +444,56 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                   ),
                 ),
               ),
+            ),
+          ),
+        ),
+      ),
+      // Demo button at the bottom
+      bottomNavigationBar: Container(
+        color: Colors.transparent,
+        child: SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.all(16.0),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Text(
+                  'Want to explore the app?',
+                  style: TextStyle(
+                    color: Colors.white70,
+                    fontSize: 12,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                SizedBox(
+                  width: 200,
+                  child: OutlinedButton.icon(
+                    onPressed: _isLoading ? null : _handleDemoLogin,
+                    icon: const Icon(Icons.play_circle_outline),
+                    label: const Text('Try Demo'),
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: Colors.white,
+                      side: const BorderSide(color: Colors.white70),
+                      backgroundColor: Colors.white.withOpacity(0.1),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 24,
+                        vertical: 12,
+                      ),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(24),
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 8),
+                const Text(
+                  'Creates a demo account with sample data',
+                  style: TextStyle(
+                    color: Colors.white54,
+                    fontSize: 10,
+                  ),
+                ),
+              ],
             ),
           ),
         ),

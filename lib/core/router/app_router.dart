@@ -2,6 +2,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import '../utils/responsive_helper.dart';
 import '../../features/auth/presentation/providers/auth_provider.dart';
 import '../../features/auth/presentation/screens/login_screen.dart';
 import '../../features/auth/presentation/screens/register_screen.dart';
@@ -190,7 +191,80 @@ class _MainNavigationShellState extends ConsumerState<MainNavigationShell> {
 
     final routes = isAdmin ? [..._routes, '/admin'] : _routes;
     final selectedIndex = _calculateSelectedIndex(currentLocation);
+    
+    // Check if we should show navigation rail for larger screens
+    final bool showNavigationRail = !ResponsiveHelper.isMobile(context);
 
+    if (showNavigationRail) {
+      // Desktop/Tablet layout with NavigationRail
+      return Scaffold(
+        body: Row(
+          children: [
+            NavigationRail(
+              selectedIndex: selectedIndex.clamp(0, routes.length - 1),
+              onDestinationSelected: (index) {
+                if (index < routes.length) {
+                  context.go(routes[index]);
+                }
+              },
+              labelType: NavigationRailLabelType.all,
+              destinations: [
+                const NavigationRailDestination(
+                  icon: Icon(Icons.home_outlined),
+                  selectedIcon: Icon(Icons.home),
+                  label: Text('Home'),
+                ),
+                const NavigationRailDestination(
+                  icon: Icon(Icons.inventory_2_outlined),
+                  selectedIcon: Icon(Icons.inventory_2),
+                  label: Text('Products'),
+                ),
+                NavigationRailDestination(
+                  icon: Badge(
+                    label: cartItemCount > 0 ? Text('$cartItemCount') : null,
+                    isLabelVisible: cartItemCount > 0,
+                    child: const Icon(Icons.shopping_cart_outlined),
+                  ),
+                  selectedIcon: Badge(
+                    label: cartItemCount > 0 ? Text('$cartItemCount') : null,
+                    isLabelVisible: cartItemCount > 0,
+                    child: const Icon(Icons.shopping_cart),
+                  ),
+                  label: const Text('Cart'),
+                ),
+                const NavigationRailDestination(
+                  icon: Icon(Icons.people_outline),
+                  selectedIcon: Icon(Icons.people),
+                  label: Text('Clients'),
+                ),
+                const NavigationRailDestination(
+                  icon: Icon(Icons.receipt_long_outlined),
+                  selectedIcon: Icon(Icons.receipt_long),
+                  label: Text('Quotes'),
+                ),
+                const NavigationRailDestination(
+                  icon: Icon(Icons.person_outline),
+                  selectedIcon: Icon(Icons.person),
+                  label: Text('Profile'),
+                ),
+                if (isAdmin)
+                  const NavigationRailDestination(
+                    icon: Icon(Icons.admin_panel_settings_outlined),
+                    selectedIcon: Icon(Icons.admin_panel_settings),
+                    label: Text('Admin'),
+                  ),
+              ],
+            ),
+            const VerticalDivider(thickness: 1, width: 1),
+            Expanded(
+              child: ResponsiveWrapper(child: widget.child),
+            ),
+          ],
+        ),
+      );
+    }
+
+    // Mobile layout with bottom navigation
     return Scaffold(
       body: widget.child,
       bottomNavigationBar: NavigationBar(

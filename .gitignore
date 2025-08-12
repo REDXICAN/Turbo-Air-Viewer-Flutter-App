@@ -1,27 +1,40 @@
-# Miscellaneous
-*.class
-*.log
-*.pyc
-*.swp
-.DS_Store
-.atom/
-.buildlog/
-.history
-.svn/
-migrate_working_dir/
+# === CRITICAL: SENSITIVE FILES - NEVER COMMIT ===
+.env
+.env.*
+*.env
+!.env.example
+secrets/
+private/
+credentials/
+*.pem
+*.key
+*.p12
+*.p8
+*.mobileprovision
+*.jks
+*.keystore
+key.properties
 
-# IntelliJ related
-*.iml
-*.ipr
-*.iws
-.idea/
+# === FIREBASE - NEVER COMMIT ===
+# DO NOT commit firebase_options.dart - contains API keys
+lib/firebase_options.dart
+firebase_options.dart
+.firebaserc
 
-# VS Code
-.vscode/
+# === EMAIL CONFIG - NEVER COMMIT ===
+lib/core/config/email_config.dart
+lib/config/email_config.dart
+**/email_config.dart
 
-# Flutter/Dart/Pub related
-**/doc/api/
-**/ios/Flutter/.last_build_id
+# === API KEYS AND CONFIGS ===
+**/api_keys.dart
+**/secrets.dart
+**/credentials.dart
+**/config/production.dart
+**/config/staging.dart
+lib/config/app_config.dart
+
+# === FLUTTER/DART ===
 .dart_tool/
 .flutter-plugins
 .flutter-plugins-dependencies
@@ -29,19 +42,95 @@ migrate_working_dir/
 .pub-cache/
 .pub/
 /build/
-
-# Symbolication related
-app.*.symbols
-
-# Obfuscation related
-app.*.map.json
-
-# Android Studio will place build artifacts here
 /android/app/debug
 /android/app/profile
 /android/app/release
 
-# iOS/XCode related
+# === IDE ===
+*.iml
+*.ipr
+*.iws
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+.history
+
+# === OS FILES ===
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+desktop.ini
+
+# === LOGS AND DEBUG ===
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+firebase-debug.log*
+firebase-debug.*.log*
+.firebase/
+ui-debug.log
+firestore-debug.log
+
+# === TEST COVERAGE ===
+coverage/
+*.lcov
+
+# === TEMPORARY FILES ===
+*.tmp
+*.temp
+*.cache
+.temp/
+.tmp/
+.cache/
+*.backup
+*.bak
+
+# === BUILD ARTIFACTS ===
+dist/
+out/
+release/
+
+# === NODE MODULES (for scripts) ===
+node_modules/
+scripts/node_modules/
+scripts/package-lock.json
+scripts/package.json
+
+# === DATABASE EXPORTS ===
+*.sql
+*.sqlite
+*.db
+database_backup/
+database_exports/
+scripts/*.xlsx
+scripts/*.csv
+scripts/*.json
+!scripts/clearFirebase.js
+!scripts/importProducts.js
+
+# === PRIVATE DATA ===
+private/
+confidential/
+sensitive/
+turbo_air_products.xlsx
+scripts/serviceAccountKey.json
+**/serviceAccountKey.json
+**/service-account-key.json
+**/*-service-account.json
+firebase-service-account.json
+**/setupSuperAdmin.js
+setupSuperAdmin.js
+
+# === FLUTTER SPECIFIC ===
+**/doc/api/
+**/ios/Flutter/.last_build_id
 **/ios/**/*.mode1v3
 **/ios/**/*.mode2v3
 **/ios/**/*.moved-aside
@@ -69,143 +158,43 @@ app.*.map.json
 **/ios/Flutter/flutter_export_environment.sh
 **/ios/ServiceDefinitions.json
 **/ios/Runner/GeneratedPluginRegistrant.*
+**/ios/firebase_app_id_file.json
 
-# macOS
+# === ANDROID SPECIFIC ===
+**/android/app/google-services.json
+google-services.json
+
+# === MACOS SPECIFIC ===
 **/Flutter/ephemeral/
 **/Pods/
 **/macos/Flutter/GeneratedPluginRegistrant.swift
 **/macos/Flutter/ephemeral
 **/xcuserdata/
+**/macos/Runner/GoogleService-Info.plist
 
-# Windows
+# === WINDOWS SPECIFIC ===
 **/windows/flutter/generated_plugin_registrant.cc
 **/windows/flutter/generated_plugin_registrant.h
 **/windows/flutter/generated_plugins.cmake
 
-# Linux
+# === LINUX SPECIFIC ===
 **/linux/flutter/generated_plugin_registrant.cc
 **/linux/flutter/generated_plugin_registrant.h
 **/linux/flutter/generated_plugins.cmake
 
-# Coverage
-coverage/
+# === WEB SPECIFIC ===
+web/firebase-config.js
 
-# Exceptions to above rules.
-!/packages/flutter_tools/test/data/dart_dependencies_test/**/.packages
-
-# Web related
-lib/generated_plugin_registrant.dart
-
-# Generated files
+# === GENERATED FILES ===
 *.g.dart
 *.freezed.dart
 *.mocks.dart
 
-# Temporary files
-*.tmp
-*.temp
-
-# ============================================
-# SENSITIVE FILES - NEVER COMMIT THESE
-# ============================================
-
-# Environment variables
-.env
-.env.*
-.env.local
-.env.production
-.env.development
-!.env.example
-
-# Product data files
-turbo_air_products.xlsx
-scripts/*.xlsx
-scripts/*.csv
-
-
-# Firebase Service Account Keys
-scripts/serviceAccountKey.json
-**/serviceAccountKey.json
-**/service-account-key.json
-**/*-service-account.json
-firebase-service-account.json
-**/setupSuperAdmin.js
-setupSuperAdmin.js
-
-# Firebase Configuration
-lib/firebase_options.dart
-ios/firebase_app_id_file.json
-android/app/google-services.json
-ios/Runner/GoogleService-Info.plist
-macos/Runner/GoogleService-Info.plist
-web/firebase-config.js
-
-# Config files with secrets
-lib/core/config/app_config_secrets.dart
-lib/core/config/env_config.dart
-lib/core/config/email_config.dart
-config.dev.dart
-config.prod.dart
-env_config.dart
-**/env_config.dart
-**/email_config.dart
-
-# Firebase Emulator
-firebase-debug.log
-firestore-debug.log
-ui-debug.log
-firebase-export-*
-.firebase/
-
-# Database exports/backups
-*.sql
-*.sqlite
-*.db
-database_backup/
-database_exports/
-scripts/*.xlsx
-scripts/*.csv
-scripts/*.json
-!scripts/clearFirebase.js
-!scripts/importProducts.js
-
-# API Keys and Credentials
-api_keys.dart
-credentials.dart
-secrets.dart
-**/api_keys.dart
-**/credentials.dart
-**/secrets.dart
-
-# Node modules (if using scripts)
-node_modules/
-scripts/node_modules/
-scripts/package-lock.json
-scripts/package.json
-
-# Build outputs
-dist/
-out/
-release/
-
-# IDE and Editor
-.idea/
-*.sublime-*
-*.code-workspace
-
-# OS Files
-Thumbs.db
-Desktop.ini
-.Spotlight-V100
-.Trashes
-
-# Backup files
+# === BACKUP FILES ===
+.backup/
 *.backup
 *.bak
 *~
-.backup/
 
-# Private data
-private/
-confidential/
-sensitive/
+# === EXCEPTIONS ===
+!/packages/flutter_tools/test/data/dart_dependencies_test/**/.packages

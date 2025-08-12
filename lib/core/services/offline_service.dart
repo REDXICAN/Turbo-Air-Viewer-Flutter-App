@@ -75,11 +75,11 @@ class OfflineService {
 
   bool get isOnline => _isOnline;
 
-  // Static getters for accessing singleton instance
-  static Stream<bool> get connectionStream => _instance.connectionStream;
-  static Stream<List<PendingOperation>> get queueStream => _instance.queueStream;
-  static List<PendingOperation> get pendingOperations => _instance.pendingOperations;
-  static bool get isOnline => _instance.isOnline;
+  // Static accessors for singleton instance
+  static Stream<bool> get staticConnectionStream => _instance.connectionStream;
+  static Stream<List<PendingOperation>> get staticQueueStream => _instance.queueStream;
+  static List<PendingOperation> get staticPendingOperations => _instance.pendingOperations;
+  static bool get staticIsOnline => _instance.isOnline;
 
   SyncStatus _syncStatus = SyncStatus.idle;
   SyncStatus get syncStatus => _syncStatus;
@@ -110,6 +110,10 @@ class OfflineService {
     // Check initial connectivity
     final connectivityResult = await _connectivity.checkConnectivity();
     _isOnline = connectivityResult != ConnectivityResult.none;
+  }
+
+  static Future<void> staticInitialize() async {
+    await _instance.initialize();
   }
 
   Future<void> _loadPendingOperations() async {
@@ -207,6 +211,10 @@ class OfflineService {
     await _syncPendingChanges();
   }
 
+  static Future<void> staticSyncWithFirebase() async {
+    await _instance.syncWithFirebase();
+  }
+
   // Cache methods expected by main.dart
   static void cacheProducts(List products) {
     // Implementation will be handled by the main cache system
@@ -230,6 +238,14 @@ class OfflineService {
 
   Future<int> getSyncQueueCount() async {
     return _pendingOperations.length;
+  }
+
+  static Future<bool> staticHasOfflineData() async {
+    return await _instance.hasOfflineData();
+  }
+
+  static Future<int> staticGetSyncQueueCount() async {
+    return await _instance.getSyncQueueCount();
   }
 
   static Future<Map<String, dynamic>> getCacheInfo() async {

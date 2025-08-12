@@ -292,40 +292,37 @@ class _ClientsScreenState extends ConsumerState<ClientsScreen> {
                         subtitle: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            if (client.contactName != null)
-                              Text('Contact: ${client.contactName}'),
-                            if (client.email != null)
-                              Text('Email: ${client.email}'),
-                            if (client.phone != null)
-                              Text('Phone: ${client.phone}'),
+                            Text('Contact: ${client.contactName}'),
+                            Text('Email: ${client.email}'),
+                            Text('Phone: ${client.phone}'),
                           ],
                         ),
-                        trailing: PopupMenuButton(
-                          itemBuilder: (context) => [
-                            PopupMenuItem(
+                        trailing: PopupMenuButton<String>(
+                          itemBuilder: (context) => <PopupMenuEntry<String>>[
+                            const PopupMenuItem<String>(
                               value: 'select',
                               child: Row(
-                                children: const [
+                                children: [
                                   Icon(Icons.check_circle_outline),
                                   SizedBox(width: 8),
                                   Text('Select'),
                                 ],
                               ),
                             ),
-                            PopupMenuItem(
+                            const PopupMenuItem(
                               value: 'edit',
                               child: Row(
-                                children: const [
+                                children: [
                                   Icon(Icons.edit),
                                   SizedBox(width: 8),
                                   Text('Edit'),
                                 ],
                               ),
                             ),
-                            PopupMenuItem(
+                            const PopupMenuItem(
                               value: 'delete',
                               child: Row(
-                                children: const [
+                                children: [
                                   Icon(Icons.delete, color: Colors.red),
                                   SizedBox(width: 8),
                                   Text('Delete',
@@ -483,7 +480,7 @@ class _ClientsScreenState extends ConsumerState<ClientsScreen> {
 
     try {
       final dbService = ref.read(databaseServiceProvider);
-      await dbService.deleteClient(client.id);
+      await dbService.deleteClient(client.id ?? '');
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(

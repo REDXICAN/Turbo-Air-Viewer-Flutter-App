@@ -1,14 +1,8 @@
 // lib/features/cart/presentation/screens/cart_screen.dart
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:printing/printing.dart';
-import 'package:share_plus/share_plus.dart';
-import 'dart:io';
-import 'package:path_provider/path_provider.dart';
 import '../../../auth/presentation/providers/auth_provider.dart';
 import '../../../../core/models/models.dart';
-import '../../../../core/services/email_service.dart';
-import '../../../../core/services/export_service.dart';
 import '../../../../core/utils/product_image_helper.dart';
 
 // Cart provider using Realtime Database
@@ -22,15 +16,22 @@ final cartProvider = StreamProvider<List<CartItem>>((ref) {
     for (final item in items) {
       final productData = await dbService.getProduct(item['product_id']);
 
+      final product = productData != null ? Product.fromJson(productData) : null;
+      final unitPrice = product?.price ?? item['unit_price']?.toDouble() ?? 0.0;
+      final quantity = item['quantity'] ?? 1;
+      
       cartItems.add(CartItem(
         id: item['id'],
         userId: item['user_id'],
         productId: item['product_id'],
-        quantity: item['quantity'],
-        product: productData != null ? Product.fromJson(productData) : null,
-        createdAt: item['created_at'] != null
+        productName: product?.description ?? item['product_name'] ?? '',
+        quantity: quantity,
+        unitPrice: unitPrice,
+        total: unitPrice * quantity,
+        product: product,
+        addedAt: item['created_at'] != null
             ? DateTime.fromMillisecondsSinceEpoch(item['created_at'])
-            : null,
+            : DateTime.now(),
       ));
     }
 
@@ -74,22 +75,47 @@ class _CartScreenState extends ConsumerState<CartScreen> {
     final theme = Theme.of(context);
 
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Cart'),
-        backgroundColor: theme.primaryColor,
-        foregroundColor: theme.appBarTheme.foregroundColor,
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.delete_outline),
-            onPressed: cartAsync.when(
-              data: (items) => items.isNotEmpty ? () => _clearCart() : null,
-              loading: () => null,
-              error: (_, __) => null,
+      body: Column(
+        children: [
+          // Custom header without AppBar
+          Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: theme.primaryColor,
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.1),
+                  blurRadius: 4,
+                  offset: const Offset(0, 2),
+                ),
+              ],
+            ),
+            child: SafeArea(
+              bottom: false,
+              child: Row(
+                children: [
+                  Text(
+                    'Cart',
+                    style: theme.textTheme.headlineSmall?.copyWith(
+                      color: theme.colorScheme.onPrimary,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  const Spacer(),
+                  IconButton(
+                    icon: Icon(Icons.delete_outline, color: theme.colorScheme.onPrimary),
+                    onPressed: cartAsync.when(
+                      data: (items) => items.isNotEmpty ? () => _clearCart() : null,
+                      loading: () => null,
+                      error: (_, __) => null,
+                    ),
+                  ),
+                ],
+              ),
             ),
           ),
-        ],
-      ),
-      body: cartAsync.when(
+          Expanded(
+            child: cartAsync.when(
         data: (items) {
           if (items.isEmpty) {
             return Center(
@@ -158,7 +184,7 @@ class _CartScreenState extends ConsumerState<CartScreen> {
                         selectedClient?.company ?? 'Select Client',
                       ),
                       subtitle: selectedClient?.contactName != null
-                          ? Text(selectedClient!.contactName!)
+                          ? Text(selectedClient!.contactName)
                           : null,
                       trailing: const Icon(Icons.arrow_forward_ios),
                       onTap: _selectClient,
@@ -180,7 +206,7 @@ class _CartScreenState extends ConsumerState<CartScreen> {
                     final item = items[index];
                     final product = item.product;
                     final imagePath = product != null
-                        ? ProductImageHelper.getImagePath(product.sku)
+                        ? ProductImageHelper.getImagePath(product.sku ?? '')
                         : null;
 
                     return Card(
@@ -313,7 +339,7 @@ class _CartScreenState extends ConsumerState<CartScreen> {
                           child: ElevatedButton.icon(
                             onPressed:
                                 selectedClient != null && !_isCreatingQuote
-                                    ? () => _createQuote(items, selectedClient!)
+                                    ? () => _createQuote(items, selectedClient)
                                     : null,
                             icon: _isCreatingQuote
                                 ? const SizedBox(
@@ -359,6 +385,9 @@ class _CartScreenState extends ConsumerState<CartScreen> {
             ],
           ),
         ),
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -390,13 +419,13 @@ class _CartScreenState extends ConsumerState<CartScreen> {
     }
 
     final dbService = ref.read(databaseServiceProvider);
-    await dbService.updateCartItem(item.id, newQuantity);
+    await dbService.updateCartItem(item.id ?? '', newQuantity);
     ref.invalidate(cartProvider);
   }
 
   Future<void> _removeItem(CartItem item) async {
     final dbService = ref.read(databaseServiceProvider);
-    await dbService.removeFromCart(item.id);
+    await dbService.removeFromCart(item.id ?? '');
     ref.invalidate(cartProvider);
 
     if (mounted) {
@@ -461,7 +490,7 @@ class _CartScreenState extends ConsumerState<CartScreen> {
 
       // Create quote
       final quoteId = await dbService.createQuote(
-        clientId: client.id,
+        clientId: client.id ?? '',
         items: quoteItems,
         subtotal: subtotal,
         taxRate: taxRate,
@@ -527,8 +556,7 @@ class ClientSelectorScreen extends ConsumerWidget {
                 child: Text(client.company[0].toUpperCase()),
               ),
               title: Text(client.company),
-              subtitle:
-                  client.contactName != null ? Text(client.contactName!) : null,
+              subtitle: Text(client.contactName),
               onTap: () => Navigator.pop(context, client),
             );
           },

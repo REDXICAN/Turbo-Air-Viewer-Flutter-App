@@ -1,6 +1,6 @@
 // lib/core/services/auth_service.dart
-import 'package:flutter/foundation.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'app_logger.dart';
 
 class AuthService {
   final FirebaseAuth _auth = FirebaseAuth.instance;
@@ -20,7 +20,7 @@ class AuthService {
       );
       return result.user;
     } catch (e) {
-      debugPrint('Sign up error: $e');
+      AppLogger.error('Sign up error', error: e, category: LogCategory.auth);
       return null;
     }
   }
@@ -34,7 +34,7 @@ class AuthService {
       );
       return result.user;
     } catch (e) {
-      debugPrint('Sign in error: $e');
+      AppLogger.error('Sign in error', error: e, category: LogCategory.auth);
       return null;
     }
   }
@@ -44,7 +44,7 @@ class AuthService {
     try {
       return await _auth.signOut();
     } catch (e) {
-      debugPrint('Sign out error: $e');
+      AppLogger.error('Sign out error', error: e, category: LogCategory.auth);
     }
   }
 }

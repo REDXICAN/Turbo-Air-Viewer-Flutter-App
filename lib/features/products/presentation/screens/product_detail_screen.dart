@@ -75,8 +75,7 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen> {
                       Center(
                         child: Image.asset(
                           ProductImageHelper.getImagePath(
-                            product.sku,
-                            _imagePages[_selectedImageIndex],
+                            product.sku ?? ''
                           ),
                           fit: BoxFit.contain,
                           errorBuilder: (_, __, ___) => Icon(
@@ -143,7 +142,7 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen> {
                           ),
                           child: Image.asset(
                             ProductImageHelper.getImagePath(
-                                product.sku, _imagePages[index]),
+                                product.sku ?? ''),
                             fit: BoxFit.cover,
                             errorBuilder: (_, __, ___) => Icon(
                               Icons.image,
@@ -172,7 +171,7 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen> {
                               borderRadius: BorderRadius.circular(4),
                             ),
                             child: Text(
-                              product.sku,
+                              product.sku ?? '',
                               style: TextStyle(
                                 color: theme.primaryColor,
                                 fontWeight: FontWeight.bold,
@@ -180,19 +179,18 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen> {
                             ),
                           ),
                           const SizedBox(width: 8),
-                          if (product.category != null)
-                            Container(
-                              padding: const EdgeInsets.symmetric(
-                                  horizontal: 8, vertical: 4),
-                              decoration: BoxDecoration(
-                                color: Colors.grey[200],
-                                borderRadius: BorderRadius.circular(4),
-                              ),
-                              child: Text(
-                                product.category!,
-                                style: const TextStyle(fontSize: 12),
-                              ),
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 8, vertical: 4),
+                            decoration: BoxDecoration(
+                              color: Colors.grey[200],
+                              borderRadius: BorderRadius.circular(4),
                             ),
+                            child: Text(
+                              product.category,
+                              style: const TextStyle(fontSize: 12),
+                            ),
+                          ),
                         ],
                       ),
                       const SizedBox(height: 16),
@@ -219,8 +217,7 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen> {
                             ),
                           ),
                           Text(
-                            product.price?.toStringAsFixed(2) ??
-                                'Call for price',
+                            product.price.toStringAsFixed(2),
                             style: theme.textTheme.headlineMedium?.copyWith(
                               color: theme.primaryColor,
                               fontWeight: FontWeight.bold,
@@ -368,8 +365,8 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen> {
       'Refrigerant': product.refrigerant,
       'Compressor': product.compressor,
       'Capacity': product.capacity,
-      'Doors': product.doors,
-      'Shelves': product.shelves,
+      'Doors': product.doors?.toString(),
+      'Shelves': product.shelves?.toString(),
     };
 
     final validSpecs = specs.entries.where((e) => e.value != null).toList();

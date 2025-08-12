@@ -2,9 +2,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:firebase_database/firebase_database.dart';
 import '../../../../core/services/firebase_auth_service.dart';
 import '../../../../core/services/realtime_database_service.dart';
+import '../../../../core/services/hybrid_database_service.dart';
 import '../../../../core/models/models.dart';
 
 // Auth Service Provider
@@ -15,6 +15,11 @@ final authServiceProvider = Provider<FirebaseAuthService>((ref) {
 // Realtime Database Service Provider
 final databaseServiceProvider = Provider<RealtimeDatabaseService>((ref) {
   return RealtimeDatabaseService();
+});
+
+// Hybrid Database Service Provider (for Firestore + Realtime)
+final hybridDatabaseProvider = Provider<HybridDatabaseService>((ref) {
+  return HybridDatabaseService();
 });
 
 // Auth State Provider
@@ -178,7 +183,7 @@ final signOutProvider = Provider((ref) {
     try {
       await authService.signOut();
     } catch (e) {
-      print('Error signing out: $e');
+      // Error signing out
     }
   };
 });
@@ -208,7 +213,6 @@ final resetPasswordProvider = Provider((ref) {
 
 // Update Profile Method Provider
 final updateProfileProvider = Provider((ref) {
-  final authService = ref.watch(authServiceProvider);
   final dbService = ref.watch(databaseServiceProvider);
   final user = ref.watch(currentUserProvider);
 

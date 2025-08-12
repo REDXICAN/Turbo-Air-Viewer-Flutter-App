@@ -1,55 +1,64 @@
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
-import 'package:firebase_auth/firebase_auth.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import 'package:connectivity_plus/connectivity_plus.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:firebase_database/firebase_database.dart';
 import '../../core/services/offline_service.dart';
 import '../../core/services/cache_manager.dart';
+import '../../core/services/app_logger.dart';
 import '../../core/models/models.dart';
-import '../auth/presentation/providers/auth_provider.dart';
-import '../products/presentation/products_screen.dart';
-import '../cart/presentation/screens/cart_screen.dart';
+import '../../core/utils/responsive_helper.dart';
+import '../products/presentation/screens/products_screen.dart';
 import '../clients/presentation/screens/clients_screen.dart';
 import '../quotes/presentation/screens/quotes_screen.dart';
 import '../profile/presentation/screens/profile_screen.dart';
 import '../admin/presentation/screens/admin_panel_screen.dart';
+import '../auth/presentation/providers/auth_provider.dart';
+import '../cart/presentation/screens/cart_screen.dart';
 
-class HomeScreen extends StatefulWidget {
-  const HomeScreen({Key? key}) : super(key: key);
+class HomeScreen extends ConsumerStatefulWidget {
+  const HomeScreen({super.key});
 
   @override
-  State<HomeScreen> createState() => _HomeScreenState();
+  ConsumerState<HomeScreen> createState() => _HomeScreenState();
 }
 
-class _HomeScreenState extends State<HomeScreen> {
+class _HomeScreenState extends ConsumerState<HomeScreen> {
   int _selectedIndex = 0;
   bool _isOnline = true;
   int _syncQueueCount = 0;
-
-  final CacheManager _cacheManager = CacheManager();
+  late final OfflineService _offlineService;
 
   // Statistics
   int _totalClients = 0;
   int _totalQuotes = 0;
   int _cartItems = 0;
   int _totalProducts = 0;
+  
+  // Navigation Rail for desktop
+  bool _isExtended = false;
 
   @override
   void initState() {
     super.initState();
+    _offlineService = OfflineService();
     _initializeServices();
     _checkConnectivity();
     _loadStatistics();
     _listenToSyncStatus();
+    _loadRealtimeData();
   }
 
   Future<void> _initializeServices() async {
-    await OfflineService.initialize();
-    await _cacheManager.initialize();
+    await OfflineService.staticInitialize();
+    // Initialize CacheManager static method
+    await CacheManager.initialize();
 
     // Initial sync if online
     final connectivityResult = await Connectivity().checkConnectivity();
     if (connectivityResult != ConnectivityResult.none) {
-      OfflineService.syncWithFirebase();
+      OfflineService.syncPendingChanges();
     }
   }
 
@@ -66,48 +75,84 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   void _listenToSyncStatus() {
-    OfflineService.syncStatus.listen((status) {
-      if (status == SyncStatus.completed) {
-        setState(() {
-          _syncQueueCount = 0;
-        });
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Data synced successfully'),
-            duration: Duration(seconds: 2),
-          ),
-        );
-      } else if (status == SyncStatus.error) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Sync failed. Will retry when online.'),
-            backgroundColor: Colors.orange,
-          ),
-        );
-      }
-
+    OfflineService.staticQueueStream.listen((operations) async {
+      final count = await _offlineService.getSyncQueueCount();
       setState(() {
-        _syncQueueCount = OfflineService.getSyncQueueCount();
+        _syncQueueCount = count;
       });
     });
   }
 
   Future<void> _loadStatistics() async {
     try {
-      final clients = await _cacheManager.getClients();
-      final quotes = await _cacheManager.getQuotes();
-      final products = await _cacheManager.getProducts();
-      final cart = await OfflineService.getCart();
+      // Try loading from cache first
+      final clients = CacheManager.getClients();
+      final quotes = CacheManager.getQuotes();
+      final products = CacheManager.getProducts();
+      final cart = _offlineService.getCart();
 
       setState(() {
         _totalClients = clients.length;
         _totalQuotes = quotes.length;
         _totalProducts = products.length;
-        _cartItems = cart?.items.length ?? 0;
+        _cartItems = cart.length;
       });
     } catch (e) {
-      print('Error loading statistics: $e');
+      AppLogger.error('Error loading statistics from cache', error: e, category: LogCategory.ui);
     }
+  }
+  
+  void _loadRealtimeData() {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) return;
+    
+    // Load products count
+    FirebaseDatabase.instance
+        .ref('products')
+        .onValue
+        .listen((event) {
+      if (mounted) {
+        setState(() {
+          _totalProducts = event.snapshot.children.length;
+        });
+      }
+    });
+    
+    // Load clients count for user
+    FirebaseDatabase.instance
+        .ref('clients/${user.uid}')
+        .onValue
+        .listen((event) {
+      if (mounted) {
+        setState(() {
+          _totalClients = event.snapshot.children.length;
+        });
+      }
+    });
+    
+    // Load quotes count for user
+    FirebaseDatabase.instance
+        .ref('quotes/${user.uid}')
+        .onValue
+        .listen((event) {
+      if (mounted) {
+        setState(() {
+          _totalQuotes = event.snapshot.children.length;
+        });
+      }
+    });
+    
+    // Load cart items count for user
+    FirebaseDatabase.instance
+        .ref('cart_items/${user.uid}')
+        .onValue
+        .listen((event) {
+      if (mounted) {
+        setState(() {
+          _cartItems = event.snapshot.children.length;
+        });
+      }
+    });
   }
 
   void _onItemTapped(int index) {
@@ -136,14 +181,15 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Widget _buildDashboard() {
-    final authProvider = context.watch<AuthProvider>();
-    final user = authProvider.appUser;
+    final userAsync = ref.watch(currentUserProfileProvider);
+    final user = ref.watch(currentUserProvider);
+    final userProfile = userAsync.valueOrNull;
 
     return RefreshIndicator(
       onRefresh: () async {
         await _loadStatistics();
         if (_isOnline) {
-          await OfflineService.syncWithFirebase();
+          await OfflineService.syncPendingChanges();
         }
       },
       child: SingleChildScrollView(
@@ -169,7 +215,9 @@ class _HomeScreenState extends State<HomeScreen> {
                     radius: 30,
                     backgroundColor: Colors.white,
                     child: Text(
-                      user?.displayName.substring(0, 1).toUpperCase() ?? 'U',
+                      (userProfile?.displayName ?? user?.displayName ?? 'User').isNotEmpty
+                          ? (userProfile?.displayName ?? user?.displayName ?? 'User').substring(0, 1).toUpperCase()
+                          : 'U',
                       style: const TextStyle(
                         fontSize: 24,
                         fontWeight: FontWeight.bold,
@@ -183,7 +231,7 @@ class _HomeScreenState extends State<HomeScreen> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          'Welcome, ${user?.displayName ?? 'User'}!',
+                          'Welcome, ${userProfile?.displayName ?? user?.displayName ?? 'User'}!',
                           style: const TextStyle(
                             fontSize: 24,
                             fontWeight: FontWeight.bold,
@@ -192,7 +240,7 @@ class _HomeScreenState extends State<HomeScreen> {
                         ),
                         const SizedBox(height: 4),
                         Text(
-                          user?.email ?? '',
+                          userProfile?.email ?? user?.email ?? '',
                           style: TextStyle(
                             fontSize: 14,
                             color: Colors.white.withOpacity(0.8),
@@ -201,7 +249,7 @@ class _HomeScreenState extends State<HomeScreen> {
                       ],
                     ),
                   ),
-                  if (authProvider.isAdmin)
+                  if (userProfile?.role == 'admin')
                     IconButton(
                       icon: const Icon(Icons.admin_panel_settings,
                           color: Colors.white),
@@ -268,12 +316,22 @@ class _HomeScreenState extends State<HomeScreen> {
             ),
             const SizedBox(height: 16),
             GridView.count(
-              crossAxisCount: 2,
+              crossAxisCount: ResponsiveHelper.getValue(
+                context,
+                mobile: 2,
+                tablet: 3,
+                desktop: 4,
+              ),
               shrinkWrap: true,
               physics: const NeverScrollableScrollPhysics(),
               mainAxisSpacing: 16,
               crossAxisSpacing: 16,
-              childAspectRatio: 1.5,
+              childAspectRatio: ResponsiveHelper.getValue(
+                context,
+                mobile: 1.5,
+                tablet: 1.3,
+                desktop: 1.4,
+              ),
               children: [
                 _buildStatCard(
                   'Total Clients',
@@ -369,10 +427,10 @@ class _HomeScreenState extends State<HomeScreen> {
               ),
             ),
             const SizedBox(height: 16),
-            FutureBuilder<List<Quote>>(
-              future: _cacheManager.getQuotes(),
-              builder: (context, snapshot) {
-                if (!snapshot.hasData || snapshot.data!.isEmpty) {
+            Builder(
+              builder: (context) {
+                final quotesData = CacheManager.getQuotes();
+                if (quotesData.isEmpty) {
                   return Card(
                     child: Padding(
                       padding: const EdgeInsets.all(24),
@@ -396,7 +454,9 @@ class _HomeScreenState extends State<HomeScreen> {
                   );
                 }
 
-                final recentQuotes = snapshot.data!
+                final recentQuotes = quotesData
+                    .map((data) => Quote.fromMap(Map<String, dynamic>.from(data)))
+                    .toList()
                   ..sort((a, b) => b.createdAt.compareTo(a.createdAt));
                 final displayQuotes = recentQuotes.take(5).toList();
 
@@ -418,7 +478,7 @@ class _HomeScreenState extends State<HomeScreen> {
                           ),
                         ),
                         title: Text(
-                            'Quote #${quote.quoteNumber ?? quote.id.substring(0, 8)}'),
+                            'Quote #${quote.quoteNumber ?? (quote.id != null && quote.id!.length >= 8 ? quote.id!.substring(0, 8) : quote.id ?? 'N/A')}'),
                         subtitle: Text(
                           '${quote.clientName ?? 'Unknown'} - \$${quote.total.toStringAsFixed(2)}',
                         ),
@@ -558,8 +618,196 @@ class _HomeScreenState extends State<HomeScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final authProvider = context.watch<AuthProvider>();
+    final userProfile = ref.watch(currentUserProfileProvider).valueOrNull;
+    final isDesktop = ResponsiveHelper.isDesktop(context);
+    
+    // Use Navigation Rail for desktop, bottom nav for mobile/tablet
+    if (isDesktop) {
+      return Scaffold(
+        body: Row(
+          children: [
+            NavigationRail(
+              extended: _isExtended,
+              backgroundColor: const Color(0xFF2A2A2A),
+              selectedIndex: _selectedIndex,
+              onDestinationSelected: _onItemTapped,
+              leading: Padding(
+                padding: const EdgeInsets.all(8.0),
+                child: IconButton(
+                  icon: Icon(
+                    _isExtended ? Icons.menu_open : Icons.menu,
+                    color: Colors.white,
+                  ),
+                  onPressed: () {
+                    setState(() {
+                      _isExtended = !_isExtended;
+                    });
+                  },
+                ),
+              ),
+              trailing: Expanded(
+                child: Align(
+                  alignment: Alignment.bottomCenter,
+                  child: Padding(
+                    padding: const EdgeInsets.only(bottom: 20),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        if (_syncQueueCount > 0)
+                          Container(
+                            margin: const EdgeInsets.all(8),
+                            padding: const EdgeInsets.all(8),
+                            decoration: BoxDecoration(
+                              color: Colors.orange.withOpacity(0.2),
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                const Icon(Icons.sync, size: 16, color: Colors.orange),
+                                if (_isExtended) ...[  
+                                  const SizedBox(width: 8),
+                                  Text(
+                                    '$_syncQueueCount pending',
+                                    style: const TextStyle(color: Colors.orange, fontSize: 12),
+                                  ),
+                                ],
+                              ],
+                            ),
+                          ),
+                        if (userProfile?.role == 'admin')
+                          IconButton(
+                            icon: const Icon(Icons.admin_panel_settings, color: Colors.white),
+                            onPressed: () {
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (context) => const AdminPanelScreen(),
+                                ),
+                              );
+                            },
+                            tooltip: 'Admin Panel',
+                          ),
+                        IconButton(
+                          icon: const Icon(Icons.logout, color: Colors.white),
+                          onPressed: () async {
+                            final signOut = ref.read(signOutProvider);
+                            await signOut();
+                            if (context.mounted) {
+                              context.go('/auth/login');
+                            }
+                          },
+                          tooltip: 'Logout',
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+              destinations: const [
+                NavigationRailDestination(
+                  icon: Icon(Icons.home_outlined),
+                  selectedIcon: Icon(Icons.home),
+                  label: Text('Home'),
+                ),
+                NavigationRailDestination(
+                  icon: Icon(Icons.inventory_outlined),
+                  selectedIcon: Icon(Icons.inventory),
+                  label: Text('Products'),
+                ),
+                NavigationRailDestination(
+                  icon: Icon(Icons.shopping_cart_outlined),
+                  selectedIcon: Icon(Icons.shopping_cart),
+                  label: Text('Cart'),
+                ),
+                NavigationRailDestination(
+                  icon: Icon(Icons.people_outline),
+                  selectedIcon: Icon(Icons.people),
+                  label: Text('Clients'),
+                ),
+                NavigationRailDestination(
+                  icon: Icon(Icons.receipt_long_outlined),
+                  selectedIcon: Icon(Icons.receipt_long),
+                  label: Text('Quotes'),
+                ),
+                NavigationRailDestination(
+                  icon: Icon(Icons.person_outline),
+                  selectedIcon: Icon(Icons.person),
+                  label: Text('Profile'),
+                ),
+              ],
+            ),
+            const VerticalDivider(thickness: 1, width: 1),
+            Expanded(
+              child: Column(
+                children: [
+                  Container(
+                    color: const Color(0xFF4169E1),
+                    child: AppBar(
+                      title: Text(_selectedIndex == 0 ? 'TurboAir Dashboard' : _getPageTitle()),
+                      backgroundColor: Colors.transparent,
+                      elevation: 0,
+                  actions: [
+                    if (_selectedIndex == 0)
+                      IconButton(
+                        icon: Stack(
+                          children: [
+                            const Icon(Icons.notifications),
+                            if (_syncQueueCount > 0)
+                              Positioned(
+                                right: 0,
+                                top: 0,
+                                child: Container(
+                                  padding: const EdgeInsets.all(2),
+                                  decoration: BoxDecoration(
+                                    color: Colors.red,
+                                    borderRadius: BorderRadius.circular(10),
+                                  ),
+                                  constraints: const BoxConstraints(
+                                    minWidth: 16,
+                                    minHeight: 16,
+                                  ),
+                                  child: Text(
+                                    _syncQueueCount.toString(),
+                                    style: const TextStyle(
+                                      fontSize: 10,
+                                      color: Colors.white,
+                                    ),
+                                    textAlign: TextAlign.center,
+                                  ),
+                                ),
+                              ),
+                          ],
+                        ),
+                        onPressed: () {
+                          // Show notifications
+                        },
+                      ),
+                    IconButton(
+                      icon: const Icon(Icons.sync),
+                      onPressed: () {
+                        OfflineService.syncPendingChanges();
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(content: Text('Syncing data...')),
+                        );
+                      },
+                      tooltip: 'Sync Data',
+                    ),
+                  ],
+                    ),
+                  ),
+                  Expanded(
+                    child: _getSelectedScreen(),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      );
+    }
 
+    // Mobile/Tablet layout with bottom navigation
     return Scaffold(
       appBar: AppBar(
         title: Text(_selectedIndex == 0 ? 'TurboAir' : _getPageTitle()),
@@ -603,11 +851,12 @@ class _HomeScreenState extends State<HomeScreen> {
           PopupMenuButton<String>(
             onSelected: (value) async {
               if (value == 'logout') {
-                await authProvider.signOut();
-                if (mounted) {
-                  Navigator.of(context).pushReplacementNamed('/login');
+                final signOut = ref.read(signOutProvider);
+                await signOut();
+                if (context.mounted) {
+                  context.go('/auth/login');
                 }
-              } else if (value == 'admin' && authProvider.isAdmin) {
+              } else if (value == 'admin' && userProfile?.role == 'admin') {
                 Navigator.push(
                   context,
                   MaterialPageRoute(
@@ -615,11 +864,11 @@ class _HomeScreenState extends State<HomeScreen> {
                   ),
                 );
               } else if (value == 'sync') {
-                OfflineService.syncWithFirebase();
+                OfflineService.syncPendingChanges();
               }
             },
             itemBuilder: (context) => [
-              if (authProvider.isAdmin)
+              if (userProfile?.role == 'admin')
                 const PopupMenuItem(
                   value: 'admin',
                   child: ListTile(

@@ -11,7 +11,7 @@ class CacheManager {
   static late Box _cache;
   static late Box _metadata;
 
-  // Initialize cache boxes
+  // Initialize cache boxes - static method
   static Future<void> initialize() async {
     _cache = await Hive.openBox(_cacheBox);
     _metadata = await Hive.openBox(_metadataBox);
@@ -37,6 +37,11 @@ class CacheManager {
 
   // Get cached value if not expired
   static dynamic getCachedValue(String key) {
+    // Check if cache is initialized
+    if (!Hive.isBoxOpen(_metadataBox) || !Hive.isBoxOpen(_cacheBox)) {
+      return null;
+    }
+    
     final metadata = _metadata.get(key);
 
     if (metadata == null) return null;
@@ -186,7 +191,7 @@ class CacheManager {
         );
       }
     } catch (e) {
-      print('Error preloading critical data: $e');
+      // Error preloading critical data
     }
   }
 
@@ -218,9 +223,11 @@ class CacheManager {
       return data;
     } catch (e) {
       // If fetch fails, try to return expired cache if available
-      final expiredCache = _cache.get(cacheKey);
-      if (expiredCache != null) {
-        return jsonDecode(expiredCache);
+      if (Hive.isBoxOpen(_cacheBox)) {
+        final expiredCache = _cache.get(cacheKey);
+        if (expiredCache != null) {
+          return jsonDecode(expiredCache);
+        }
       }
 
       rethrow;

@@ -1,4 +1,5 @@
 // lib/core/services/realtime_database_service.dart
+import 'package:flutter/foundation.dart';
 import 'package:firebase_database/firebase_database.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'dart:async';
@@ -9,8 +10,11 @@ class RealtimeDatabaseService {
 
   // Enable offline persistence
   Future<void> enableOfflinePersistence() async {
-    await _db.setPersistenceEnabled(true);
-    await _db.setPersistenceCacheSizeBytes(100 * 1024 * 1024); // 100MB cache
+    // setPersistenceEnabled is not supported on web platform
+    if (!kIsWeb) {
+      _db.setPersistenceEnabled(true);
+      _db.setPersistenceCacheSizeBytes(100 * 1024 * 1024); // 100MB cache
+    }
   }
 
   // Get current user ID
@@ -92,9 +96,7 @@ class RealtimeDatabaseService {
     if (userId == null) return Stream.value([]);
 
     return _db
-        .ref('clients')
-        .orderByChild('user_id')
-        .equalTo(userId!)
+        .ref('clients/$userId')
         .onValue
         .map((event) {
       final List<Map<String, dynamic>> clients = [];
@@ -111,7 +113,8 @@ class RealtimeDatabaseService {
   }
 
   Future<Map<String, dynamic>?> getClient(String clientId) async {
-    final snapshot = await _db.ref('clients/$clientId').get();
+    if (userId == null) return null;
+    final snapshot = await _db.ref('clients/$userId/$clientId').get();
     if (snapshot.exists) {
       final data = Map<String, dynamic>.from(snapshot.value as Map);
       data['id'] = clientId;
@@ -123,10 +126,9 @@ class RealtimeDatabaseService {
   Future<String> addClient(Map<String, dynamic> client) async {
     if (userId == null) throw Exception('User not authenticated');
 
-    final newClientRef = _db.ref('clients').push();
+    final newClientRef = _db.ref('clients/$userId').push();
     await newClientRef.set({
       ...client,
-      'user_id': userId,
       'created_at': ServerValue.timestamp,
       'updated_at': ServerValue.timestamp,
     });
@@ -135,14 +137,16 @@ class RealtimeDatabaseService {
 
   Future<void> updateClient(
       String clientId, Map<String, dynamic> updates) async {
-    await _db.ref('clients/$clientId').update({
+    if (userId == null) return;
+    await _db.ref('clients/$userId/$clientId').update({
       ...updates,
       'updated_at': ServerValue.timestamp,
     });
   }
 
   Future<void> deleteClient(String clientId) async {
-    await _db.ref('clients/$clientId').remove();
+    if (userId == null) return;
+    await _db.ref('clients/$userId/$clientId').remove();
   }
 
   // ============ CART ============
@@ -150,9 +154,7 @@ class RealtimeDatabaseService {
     if (userId == null) return Stream.value([]);
 
     return _db
-        .ref('cart_items')
-        .orderByChild('user_id')
-        .equalTo(userId!)
+        .ref('cart_items/$userId')
         .onValue
         .map((event) {
       final List<Map<String, dynamic>> items = [];
@@ -173,9 +175,7 @@ class RealtimeDatabaseService {
 
     // Check if item already exists in cart
     final existingSnapshot = await _db
-        .ref('cart_items')
-        .orderByChild('user_id')
-        .equalTo(userId!)
+        .ref('cart_items/$userId')
         .once();
 
     if (existingSnapshot.snapshot.value != null) {
@@ -186,7 +186,7 @@ class RealtimeDatabaseService {
         if (item['product_id'] == productId) {
           // Update existing quantity
           final newQuantity = (item['quantity'] ?? 0) + quantity;
-          await _db.ref('cart_items/${entry.key}').update({
+          await _db.ref('cart_items/$userId/${entry.key}').update({
             'quantity': newQuantity,
             'updated_at': ServerValue.timestamp,
           });
@@ -196,9 +196,8 @@ class RealtimeDatabaseService {
     }
 
     // Add new item
-    final newCartRef = _db.ref('cart_items').push();
+    final newCartRef = _db.ref('cart_items/$userId').push();
     await newCartRef.set({
-      'user_id': userId,
       'product_id': productId,
       'quantity': quantity,
       'created_at': ServerValue.timestamp,
@@ -207,10 +206,11 @@ class RealtimeDatabaseService {
   }
 
   Future<void> updateCartItem(String cartItemId, int quantity) async {
+    if (userId == null) return;
     if (quantity <= 0) {
       await removeFromCart(cartItemId);
     } else {
-      await _db.ref('cart_items/$cartItemId').update({
+      await _db.ref('cart_items/$userId/$cartItemId').update({
         'quantity': quantity,
         'updated_at': ServerValue.timestamp,
       });
@@ -218,24 +218,14 @@ class RealtimeDatabaseService {
   }
 
   Future<void> removeFromCart(String cartItemId) async {
-    await _db.ref('cart_items/$cartItemId').remove();
+    if (userId == null) return;
+    await _db.ref('cart_items/$userId/$cartItemId').remove();
   }
 
   Future<void> clearCart() async {
     if (userId == null) return;
 
-    final snapshot = await _db
-        .ref('cart_items')
-        .orderByChild('user_id')
-        .equalTo(userId!)
-        .once();
-
-    if (snapshot.snapshot.value != null) {
-      final data = Map<String, dynamic>.from(snapshot.snapshot.value as Map);
-      for (var key in data.keys) {
-        await _db.ref('cart_items/$key').remove();
-      }
-    }
+    await _db.ref('cart_items/$userId').remove();
   }
 
   // ============ QUOTES ============
@@ -243,9 +233,7 @@ class RealtimeDatabaseService {
     if (userId == null) return Stream.value([]);
 
     return _db
-        .ref('quotes')
-        .orderByChild('user_id')
-        .equalTo(userId!)
+        .ref('quotes/$userId')
         .onValue
         .map((event) {
       final List<Map<String, dynamic>> quotes = [];
@@ -268,7 +256,8 @@ class RealtimeDatabaseService {
   }
 
   Future<Map<String, dynamic>?> getQuote(String quoteId) async {
-    final snapshot = await _db.ref('quotes/$quoteId').get();
+    if (userId == null) return null;
+    final snapshot = await _db.ref('quotes/$userId/$quoteId').get();
     if (snapshot.exists) {
       final data = Map<String, dynamic>.from(snapshot.value as Map);
       data['id'] = quoteId;
@@ -288,10 +277,9 @@ class RealtimeDatabaseService {
     if (userId == null) throw Exception('User not authenticated');
 
     final quoteNumber = 'Q${DateTime.now().millisecondsSinceEpoch}';
-    final newQuoteRef = _db.ref('quotes').push();
+    final newQuoteRef = _db.ref('quotes/$userId').push();
 
     await newQuoteRef.set({
-      'user_id': userId,
       'client_id': clientId,
       'quote_number': quoteNumber,
       'subtotal': subtotal,
@@ -305,7 +293,7 @@ class RealtimeDatabaseService {
 
     // Add quote items
     for (final item in items) {
-      await _db.ref('quote_items').push().set({
+      await _db.ref('quote_items/$userId').push().set({
         'quote_id': newQuoteRef.key,
         'product_id': item['product_id'],
         'quantity': item['quantity'],
@@ -319,7 +307,8 @@ class RealtimeDatabaseService {
   }
 
   Future<void> updateQuoteStatus(String quoteId, String status) async {
-    await _db.ref('quotes/$quoteId').update({
+    if (userId == null) return;
+    await _db.ref('quotes/$userId/$quoteId').update({
       'status': status,
       'updated_at': ServerValue.timestamp,
     });
@@ -360,14 +349,25 @@ class RealtimeDatabaseService {
     });
   }
 
+  Future<List<Map<String, dynamic>>> getAllUsers() async {
+    final snapshot = await _db.ref('user_profiles').once();
+    if (snapshot.snapshot.value != null) {
+      final data = Map<String, dynamic>.from(snapshot.snapshot.value as Map);
+      return data.entries.map((entry) {
+        final userMap = Map<String, dynamic>.from(entry.value);
+        userMap['id'] = entry.key;
+        return userMap;
+      }).toList();
+    }
+    return [];
+  }
+
   // ============ STATISTICS ============
   Future<int> getTotalClients() async {
     if (userId == null) return 0;
 
     final snapshot = await _db
-        .ref('clients')
-        .orderByChild('user_id')
-        .equalTo(userId!)
+        .ref('clients/$userId')
         .once();
 
     if (snapshot.snapshot.value != null) {
@@ -380,8 +380,7 @@ class RealtimeDatabaseService {
   Future<int> getTotalQuotes() async {
     if (userId == null) return 0;
 
-    final snapshot =
-        await _db.ref('quotes').orderByChild('user_id').equalTo(userId!).once();
+    final snapshot = await _db.ref('quotes/$userId').once();
 
     if (snapshot.snapshot.value != null) {
       final data = Map<String, dynamic>.from(snapshot.snapshot.value as Map);

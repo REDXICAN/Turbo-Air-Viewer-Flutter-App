@@ -6,7 +6,6 @@ import 'core/router/app_router.dart';
 import 'core/widgets/offline_status_widget.dart';
 import 'features/auth/presentation/providers/auth_provider.dart';
 import 'features/auth/presentation/screens/splash_screen.dart';
-import 'features/profile/presentation/screens/profile_screen.dart';
 
 class TurboAirApp extends ConsumerWidget {
   const TurboAirApp({super.key});

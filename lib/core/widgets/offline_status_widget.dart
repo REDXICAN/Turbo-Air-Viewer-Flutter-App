@@ -48,11 +48,11 @@ class _OfflineStatusWidgetState extends State<OfflineStatusWidget>
       children: [
         widget.child,
         StreamBuilder<bool>(
-          stream: OfflineService.connectivityStream,
-          initialData: OfflineService.isOnline,
+          stream: OfflineService.staticConnectionStream,
+          initialData: OfflineService.staticIsOnline,
           builder: (context, snapshot) {
             final isOnline = snapshot.data ?? true;
-            final pendingCount = OfflineService.getPendingOperationsCount();
+            final pendingCount = OfflineService.staticPendingOperations.length;
 
             // Show banner if offline or has pending operations
             final shouldShow = !isOnline || (isOnline && pendingCount > 0);

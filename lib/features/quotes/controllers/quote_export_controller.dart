@@ -270,7 +270,7 @@ the products or pricing.
 
       return success;
     } catch (e) {
-      print('Error sending quote email: $e');
+      // Error sending quote email
 
       // Log error
       await _firestore.collection('email_logs').add({

@@ -2,19 +2,29 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:file_picker/file_picker.dart';
 import '../../../../core/config/app_config.dart';
 import '../../../../core/models/models.dart';
 import '../../../../core/utils/product_image_helper.dart';
+import '../../../../core/services/cache_manager.dart';
+import '../../../../core/services/excel_upload_service.dart';
+import '../../../../core/services/app_logger.dart';
 import '../../../auth/presentation/providers/auth_provider.dart';
+import '../../widgets/excel_preview_dialog.dart';
 
-// Products provider using Realtime Database
+// Products provider using Cache Manager
 final productsProvider =
-    StreamProvider.family<List<Product>, String?>((ref, category) {
-  final dbService = ref.watch(databaseServiceProvider);
-
-  return dbService.getProducts(category: category).map((productsList) {
-    return productsList.map((json) => Product.fromJson(json)).toList();
-  });
+    FutureProvider.family<List<Product>, String?>((ref, category) async {
+  final productsData = CacheManager.getProducts();
+  final products = productsData
+      .map((data) => Product.fromMap(Map<String, dynamic>.from(data)))
+      .toList();
+  
+  if (category != null && category.isNotEmpty) {
+    return products.where((p) => p.category == category).toList();
+  }
+  
+  return products;
 });
 
 // Search provider
@@ -23,10 +33,16 @@ final searchResultsProvider = FutureProvider<List<Product>>((ref) async {
   final query = ref.watch(searchQueryProvider);
   if (query.isEmpty) return [];
 
-  final dbService = ref.watch(databaseServiceProvider);
-  final results = await dbService.searchProducts(query);
-
-  return results.map((json) => Product.fromJson(json)).toList();
+  final productsData = CacheManager.getProducts();
+  final products = productsData
+      .map((data) => Product.fromMap(Map<String, dynamic>.from(data)))
+      .toList();
+  
+  return products.where((product) {
+    return product.name.toLowerCase().contains(query.toLowerCase()) ||
+           product.description.toLowerCase().contains(query.toLowerCase()) ||
+           product.category.toLowerCase().contains(query.toLowerCase());
+  }).toList();
 });
 
 class ProductsScreen extends ConsumerStatefulWidget {
@@ -40,11 +56,193 @@ class _ProductsScreenState extends ConsumerState<ProductsScreen> {
   String? selectedCategory;
   final TextEditingController _searchController = TextEditingController();
   bool _isSearching = false;
+  bool _isUploading = false;
 
   @override
   void dispose() {
     _searchController.dispose();
     super.dispose();
+  }
+
+  Future<void> _handleExcelUpload() async {
+    try {
+      setState(() => _isUploading = true);
+      
+      // Pick Excel file
+      final result = await FilePicker.platform.pickFiles(
+        type: FileType.custom,
+        allowedExtensions: ['xlsx', 'xls'],
+        withData: true,
+      );
+
+      if (result != null && result.files.single.bytes != null) {
+        // Show progress dialog for parsing
+        if (mounted) {
+          showDialog(
+            context: context,
+            barrierDismissible: false,
+            builder: (context) => const AlertDialog(
+              content: Row(
+                children: [
+                  CircularProgressIndicator(),
+                  SizedBox(width: 20),
+                  Text('Reading Excel file...'),
+                ],
+              ),
+            ),
+          );
+        }
+
+        // Preview Excel
+        final previewResult = await ExcelUploadService.previewExcel(
+          result.files.single.bytes!,
+        );
+
+        if (mounted) {
+          Navigator.of(context).pop(); // Close progress dialog
+          
+          if (previewResult['success'] == true) {
+            // Show preview dialog
+            showDialog(
+              context: context,
+              barrierDismissible: false,
+              builder: (context) => ExcelPreviewDialog(
+                previewData: previewResult,
+                onConfirm: (products, clearExisting) async {
+                  // Show upload progress
+                  showDialog(
+                    context: context,
+                    barrierDismissible: false,
+                    builder: (context) => AlertDialog(
+                      content: Row(
+                        children: [
+                          const CircularProgressIndicator(),
+                          const SizedBox(width: 20),
+                          Text('Uploading ${products.length} products...'),
+                        ],
+                      ),
+                    ),
+                  );
+                  
+                  // Save products
+                  final saveResult = await ExcelUploadService.saveProducts(
+                    products,
+                    clearExisting: clearExisting,
+                  );
+                  
+                  if (mounted) {
+                    Navigator.of(context).pop(); // Close progress dialog
+                    
+                    // Refresh products list
+                    ref.invalidate(productsProvider);
+                    
+                    // Show result dialog
+                    showDialog(
+                      context: context,
+                      builder: (context) => AlertDialog(
+                        title: Text(
+                          saveResult['success'] == true 
+                              ? 'Upload Successful' 
+                              : 'Upload Failed',
+                          style: TextStyle(
+                            color: saveResult['success'] == true 
+                                ? Colors.green 
+                                : Colors.red,
+                          ),
+                        ),
+                        content: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(saveResult['message'] ?? ''),
+                            if (saveResult['success'] == true) ...[
+                              const SizedBox(height: 8),
+                              Text('Total Products: ${saveResult['totalProducts']}'),
+                              Text('Successfully Saved: ${saveResult['successCount']}'),
+                              if (saveResult['errorCount'] > 0) ...[
+                                Text(
+                                  'Errors: ${saveResult['errorCount']}',
+                                  style: const TextStyle(color: Colors.red),
+                                ),
+                                const SizedBox(height: 8),
+                                if (saveResult['errors'] != null && 
+                                    (saveResult['errors'] as List).isNotEmpty)
+                                  Container(
+                                    height: 100,
+                                    decoration: BoxDecoration(
+                                      border: Border.all(color: Colors.grey),
+                                      borderRadius: BorderRadius.circular(4),
+                                    ),
+                                    child: ListView.builder(
+                                      itemCount: (saveResult['errors'] as List).length,
+                                      itemBuilder: (context, index) => Padding(
+                                        padding: const EdgeInsets.all(4),
+                                        child: Text(
+                                          saveResult['errors'][index],
+                                          style: const TextStyle(
+                                            fontSize: 12,
+                                            color: Colors.red,
+                                          ),
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                              ],
+                            ],
+                          ],
+                        ),
+                        actions: [
+                          TextButton(
+                            onPressed: () => Navigator.of(context).pop(),
+                            child: const Text('OK'),
+                          ),
+                        ],
+                      ),
+                    );
+                  }
+                },
+              ),
+            );
+          } else {
+            // Show error dialog
+            showDialog(
+              context: context,
+              builder: (context) => AlertDialog(
+                title: const Text('Failed to Read Excel'),
+                content: Text(
+                  previewResult['message'] ?? 'Failed to parse Excel file',
+                ),
+                actions: [
+                  TextButton(
+                    onPressed: () => Navigator.of(context).pop(),
+                    child: const Text('OK'),
+                  ),
+                ],
+              ),
+            );
+          }
+        }
+      }
+    } catch (e) {
+      AppLogger.error('Excel upload error', error: e, category: LogCategory.excel);
+      if (mounted) {
+        // Try to close any open dialogs
+        try {
+          Navigator.of(context).pop();
+        } catch (_) {}
+        
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _isUploading = false);
+      }
+    }
   }
 
   @override
@@ -56,6 +254,9 @@ class _ProductsScreenState extends ConsumerState<ProductsScreen> {
         ? ref.watch(searchResultsProvider)
         : ref.watch(productsProvider(selectedCategory));
 
+    // Check if current user is superadmin
+    final isSuperAdmin = ExcelUploadService.isSuperAdmin;
+
     return Scaffold(
       appBar: AppBar(
         title: const Text('Products'),
@@ -63,6 +264,24 @@ class _ProductsScreenState extends ConsumerState<ProductsScreen> {
         foregroundColor: theme.appBarTheme.foregroundColor,
         elevation: 0,
       ),
+      floatingActionButton: isSuperAdmin
+          ? FloatingActionButton.extended(
+              onPressed: _isUploading ? null : _handleExcelUpload,
+              backgroundColor: theme.primaryColor,
+              icon: _isUploading
+                  ? const SizedBox(
+                      width: 20,
+                      height: 20,
+                      child: CircularProgressIndicator(
+                        color: Colors.white,
+                        strokeWidth: 2,
+                      ),
+                    )
+                  : const Icon(Icons.upload_file),
+              label: Text(_isUploading ? 'Uploading...' : 'Upload Excel'),
+              tooltip: 'Upload products from Excel file',
+            )
+          : null,
       body: Column(
         children: [
           // Search Bar
@@ -100,7 +319,7 @@ class _ProductsScreenState extends ConsumerState<ProductsScreen> {
 
           // Category Filter (only show when not searching)
           if (!_isSearching)
-            Container(
+            SizedBox(
               height: 50,
               child: ListView(
                 scrollDirection: Axis.horizontal,
@@ -120,13 +339,8 @@ class _ProductsScreenState extends ConsumerState<ProductsScreen> {
                     return Padding(
                       padding: const EdgeInsets.only(right: 8),
                       child: FilterChip(
-                        label: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Text(entry.value.icon),
-                            const SizedBox(width: 4),
-                            Text(entry.key),
-                          ],
+                        label: Text(
+                          '${entry.value.icon} ${entry.key.length > 15 ? '${entry.key.substring(0, 15)}...' : entry.key}',
                         ),
                         selected: selectedCategory == entry.key,
                         onSelected: (_) {
@@ -236,7 +450,7 @@ class ProductCard extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
-    final imagePath = ProductImageHelper.getImagePath(product.sku);
+    final imagePath = ProductImageHelper.getImagePath(product.sku ?? product.model);
     final dbService = ref.watch(databaseServiceProvider);
 
     return Card(
@@ -259,8 +473,7 @@ class ProductCard extends ConsumerWidget {
                     top: Radius.circular(8),
                   ),
                 ),
-                child: imagePath != null
-                    ? Image.asset(
+                child: Image.asset(
                         imagePath,
                         fit: BoxFit.contain,
                         width: double.infinity,
@@ -269,12 +482,6 @@ class ProductCard extends ConsumerWidget {
                             Icons.image_not_supported,
                             size: 40,
                           ),
-                        ),
-                      )
-                    : const Center(
-                        child: Icon(
-                          Icons.inventory_2,
-                          size: 40,
                         ),
                       ),
               ),
@@ -288,7 +495,7 @@ class ProductCard extends ConsumerWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      product.sku,
+                      product.sku ?? product.model,
                       style: theme.textTheme.titleSmall?.copyWith(
                         fontWeight: FontWeight.bold,
                       ),
@@ -307,9 +514,7 @@ class ProductCard extends ConsumerWidget {
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
                         Text(
-                          product.price != null
-                              ? '\$${product.price!.toStringAsFixed(2)}'
-                              : 'Price on request',
+                          '\$${product.price.toStringAsFixed(2)}',
                           style: theme.textTheme.titleMedium?.copyWith(
                             color: theme.primaryColor,
                             fontWeight: FontWeight.bold,
@@ -319,7 +524,7 @@ class ProductCard extends ConsumerWidget {
                           icon: const Icon(Icons.add_shopping_cart),
                           onPressed: () async {
                             try {
-                              await dbService.addToCart(product.id, 1);
+                              await dbService.addToCart(product.id ?? '', 1);
 
                               if (context.mounted) {
                                 ScaffoldMessenger.of(context).showSnackBar(

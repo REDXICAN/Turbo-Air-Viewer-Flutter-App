@@ -5,7 +5,6 @@ import 'package:intl/intl.dart';
 import 'package:go_router/go_router.dart';
 import '../../../auth/presentation/providers/auth_provider.dart';
 import '../../../../core/models/models.dart';
-import '../../../../core/utils/product_image_helper.dart';
 
 // Quotes provider using Realtime Database
 final quotesProvider = StreamProvider<List<Quote>>((ref) {
@@ -30,29 +29,28 @@ final quotesProvider = StreamProvider<List<Quote>>((ref) {
           final productData =
               await dbService.getProduct(itemData['product_id']);
           items.add(QuoteItem(
-            id: itemData['id'] ?? '',
-            quoteId: itemData['quote_id'] ?? '',
             productId: itemData['product_id'] ?? '',
+            productName: productData?['name'] ?? 'Unknown Product',
             quantity: itemData['quantity'] ?? 1,
             unitPrice: (itemData['unit_price'] ?? 0).toDouble(),
-            totalPrice: (itemData['total_price'] ?? 0).toDouble(),
-            product: productData,
+            total: (itemData['total_price'] ?? 0).toDouble(),
+            product: productData != null ? Product.fromMap(productData) : null,
+            addedAt: DateTime.now(),
           ));
         }
       }
 
       quotes.add(Quote(
         id: quoteData['id'],
-        userId: quoteData['user_id'],
         clientId: quoteData['client_id'],
         quoteNumber: quoteData['quote_number'],
         subtotal: (quoteData['subtotal'] ?? 0).toDouble(),
-        taxRate: (quoteData['tax_rate'] ?? 0).toDouble(),
-        taxAmount: (quoteData['tax_amount'] ?? 0).toDouble(),
-        totalAmount: (quoteData['total_amount'] ?? 0).toDouble(),
+        tax: (quoteData['tax_amount'] ?? 0).toDouble(),
+        total: (quoteData['total_amount'] ?? 0).toDouble(),
         status: quoteData['status'] ?? 'draft',
         items: items,
-        client: clientData,
+        client: clientData != null ? Client.fromMap(clientData) : null,
+        createdBy: quoteData['user_id'] ?? '',
         createdAt: quoteData['created_at'] != null
             ? DateTime.fromMillisecondsSinceEpoch(quoteData['created_at'])
             : DateTime.now(),
@@ -148,11 +146,10 @@ class _QuotesScreenState extends ConsumerState<QuotesScreen> {
                 if (_searchQuery.isNotEmpty) {
                   filteredQuotes = filteredQuotes
                       .where((q) =>
-                          q.quoteNumber
-                              .toLowerCase()
-                              .contains(_searchQuery.toLowerCase()) ||
-                          (q.client?['company'] ?? '')
-                              .toString()
+                          (q.quoteNumber
+                              ?.toLowerCase()
+                              .contains(_searchQuery.toLowerCase()) ?? false) ||
+                          (q.client?.company ?? '')
                               .toLowerCase()
                               .contains(_searchQuery.toLowerCase()))
                       .toList();
@@ -290,7 +287,7 @@ class _QuotesScreenState extends ConsumerState<QuotesScreen> {
                 children: [
                   Icon(Icons.business, size: 16, color: theme.iconTheme.color),
                   const SizedBox(width: 4),
-                  Text(quote.client?['company'] ?? 'Unknown Client'),
+                  Text(quote.client?.company ?? 'Unknown Client'),
                 ],
               ),
               const SizedBox(height: 4),
@@ -301,7 +298,7 @@ class _QuotesScreenState extends ConsumerState<QuotesScreen> {
                   Icon(Icons.calendar_today,
                       size: 16, color: theme.iconTheme.color),
                   const SizedBox(width: 4),
-                  Text(dateFormat.format(quote.createdAt ?? DateTime.now())),
+                  Text(dateFormat.format(quote.createdAt)),
                 ],
               ),
               const SizedBox(height: 12),
@@ -348,10 +345,10 @@ class _QuotesScreenState extends ConsumerState<QuotesScreen> {
                     ),
                   ),
                   const SizedBox(width: 8),
-                  PopupMenuButton(
+                  PopupMenuButton<String>(
                     icon: const Icon(Icons.more_vert),
-                    itemBuilder: (context) => [
-                      const PopupMenuItem(
+                    itemBuilder: (context) => <PopupMenuEntry<String>>[
+                      const PopupMenuItem<String>(
                         value: 'export_pdf',
                         child: Row(
                           children: [
@@ -361,7 +358,7 @@ class _QuotesScreenState extends ConsumerState<QuotesScreen> {
                           ],
                         ),
                       ),
-                      const PopupMenuItem(
+                      const PopupMenuItem<String>(
                         value: 'export_excel',
                         child: Row(
                           children: [
@@ -372,7 +369,7 @@ class _QuotesScreenState extends ConsumerState<QuotesScreen> {
                         ),
                       ),
                       const PopupMenuDivider(),
-                      const PopupMenuItem(
+                      const PopupMenuItem<String>(
                         value: 'delete',
                         child: Row(
                           children: [

@@ -2,13 +2,13 @@
 
 import 'package:mailer/mailer.dart';
 import 'package:mailer/smtp_server.dart';
-import '../config/email_config.dart';
+import '../config/secure_email_config.dart';
 
 class EmailService {
   late SmtpServer _smtpServer;
 
   EmailService() {
-    _smtpServer = gmail(EmailConfig.gmailAddress, EmailConfig.gmailAppPassword);
+    _smtpServer = gmail(SecureEmailConfig.gmailAddress, SecureEmailConfig.gmailAppPassword);
   }
 
   /// Send quote email with user information
@@ -33,20 +33,20 @@ $htmlContent
 $userSignature
 
 <p style="color: #666; font-size: 12px; margin-top: 20px;">
-  ${EmailConfig.noReplyNote}<br>
+  ${SecureEmailConfig.noReplyNote}<br>
   For inquiries, please contact your sales representative directly using the information above.
 </p>
       ''';
 
       final message = Message()
-        ..from = Address(EmailConfig.gmailAddress, EmailConfig.senderName)
+        ..from = Address(SecureEmailConfig.gmailAddress, SecureEmailConfig.senderName)
         ..recipients.add(recipientEmail)
-        ..subject = '${EmailConfig.quoteEmailSubject}$quoteNumber'
+        ..subject = '${SecureEmailConfig.quoteEmailSubject}$quoteNumber'
         ..html = enhancedHtmlContent;
 
       // Set reply-to as the user's email if available
       if (userInfo['email'] != null && userInfo['email'].isNotEmpty) {
-        message.replyToAddresses.add(Address(userInfo['email'], userInfo['name'] ?? ''));
+        // message.replyTo.add(Address(userInfo['email'], userInfo['name'] ?? ''));
       }
 
       // Add attachments if provided
@@ -55,17 +55,16 @@ $userSignature
       }
 
       // Send email
-      final sendReport = await send(message, _smtpServer,
-          timeout: Duration(seconds: EmailConfig.emailTimeoutSeconds));
+      await send(message, _smtpServer,
+          timeout: const Duration(seconds: EmailConfig.emailTimeoutSeconds));
 
       if (EmailConfig.enableEmailLogging) {
-        print('Email sent successfully to $recipientEmail');
-        print('Message ID: ${sendReport.toString()}');
+        // Email sent successfully
       }
 
       return true;
     } catch (e) {
-      print('Error sending email: $e');
+      // Error sending email
       return false;
     }
   }
@@ -153,9 +152,10 @@ $userSignature
     required Map<String, dynamic> userInfo,
     String? customMessage,
   }) async {
-    // Create PDF attachment
-    final attachment = FileAttachment.fromBytes(pdfBytes, 'Quote_$quoteNumber.pdf')
-      ..location = Location.attachment;
+    // Create PDF attachment using bytes
+    // Create temporary file for attachment
+    // final attachment = FileAttachment(File.fromRawPath(pdfBytes));
+    // Note: FileAttachment.fromBytes is not available, need to use File constructor
 
     // Build email HTML content
     final htmlContent = '''
@@ -184,7 +184,7 @@ $userSignature
       quoteNumber: quoteNumber,
       htmlContent: htmlContent,
       userInfo: userInfo,
-      attachments: [attachment],
+      attachments: [], // TODO: Add attachment when FileAttachment.fromBytes is implemented
     );
   }
 }

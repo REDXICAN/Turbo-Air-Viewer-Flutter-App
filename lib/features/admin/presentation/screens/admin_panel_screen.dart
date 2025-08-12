@@ -1,25 +1,20 @@
 import 'package:flutter/material.dart';
-import 'package:firebase_database/firebase_database.dart';
-import 'package:provider/provider.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:fl_chart/fl_chart.dart';
 import '../../../../core/models/models.dart';
-import '../../../../core/services/database_service.dart';
 import '../../../../core/services/cache_manager.dart';
 import '../../../../core/services/export_service.dart';
 import '../../../auth/presentation/providers/auth_provider.dart';
 import 'package:intl/intl.dart';
 
-class AdminPanelScreen extends StatefulWidget {
-  const AdminPanelScreen({Key? key}) : super(key: key);
+class AdminPanelScreen extends ConsumerStatefulWidget {
+  const AdminPanelScreen({super.key});
 
   @override
-  State<AdminPanelScreen> createState() => _AdminPanelScreenState();
+  ConsumerState<AdminPanelScreen> createState() => _AdminPanelScreenState();
 }
 
-class _AdminPanelScreenState extends State<AdminPanelScreen> {
-  final DatabaseService _dbService = DatabaseService();
-  final CacheManager _cacheManager = CacheManager();
-  final ExportService _exportService = ExportService();
+class _AdminPanelScreenState extends ConsumerState<AdminPanelScreen> {
 
   int _totalProducts = 0;
   int _totalClients = 0;
@@ -27,7 +22,7 @@ class _AdminPanelScreenState extends State<AdminPanelScreen> {
   double _totalRevenue = 0.0;
 
   List<Quote> _recentQuotes = [];
-  List<AppUser> _users = [];
+  List<UserProfile> _users = [];
   Map<String, double> _categoryRevenue = {};
   Map<String, int> _monthlyQuotes = {};
 
@@ -42,8 +37,8 @@ class _AdminPanelScreenState extends State<AdminPanelScreen> {
   }
 
   void _checkAdminAccess() {
-    final authProvider = context.read<AuthProvider>();
-    if (!authProvider.isAdmin) {
+    final userProfile = ref.read(currentUserProfileProvider).valueOrNull;
+    if (userProfile?.role != 'admin') {
       Navigator.pop(context);
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
@@ -74,9 +69,9 @@ class _AdminPanelScreenState extends State<AdminPanelScreen> {
   }
 
   Future<void> _loadStatistics() async {
-    final products = await _cacheManager.getProducts();
-    final clients = await _cacheManager.getClients();
-    final quotes = await _cacheManager.getQuotes();
+    final products = CacheManager.getProducts();
+    final clients = CacheManager.getClients();
+    final quotes = CacheManager.getQuotes();
 
     double revenue = 0.0;
     for (final quote in quotes) {
@@ -94,8 +89,11 @@ class _AdminPanelScreenState extends State<AdminPanelScreen> {
   }
 
   Future<void> _loadRecentQuotes() async {
-    final quotes = await _cacheManager.getQuotes();
-    quotes.sort((a, b) => b.createdAt.compareTo(a.createdAt));
+    final quotesData = CacheManager.getQuotes();
+    final quotes = quotesData
+        .map((data) => Quote.fromMap(Map<String, dynamic>.from(data)))
+        .toList()
+      ..sort((a, b) => b.createdAt.compareTo(a.createdAt));
 
     setState(() {
       _recentQuotes = quotes.take(10).toList();
@@ -103,17 +101,29 @@ class _AdminPanelScreenState extends State<AdminPanelScreen> {
   }
 
   Future<void> _loadUsers() async {
-    final authProvider = context.read<AuthProvider>();
-    final users = await authProvider.getAllUsers();
+    try {
+      final dbService = ref.read(databaseServiceProvider);
+      final usersData = await dbService.getAllUsers();
+      final users = usersData.map((userData) => UserProfile.fromJson(userData)).toList();
 
-    setState(() {
-      _users = users;
-    });
+      setState(() {
+        _users = users;
+      });
+    } catch (e) {
+      _showError('Failed to load users: $e');
+    }
   }
 
   Future<void> _loadChartData() async {
-    final quotes = await _cacheManager.getQuotes();
-    final products = await _cacheManager.getProducts();
+    final quotesData = CacheManager.getQuotes();
+    final productsData = CacheManager.getProducts();
+    
+    final quotes = quotesData
+        .map((data) => Quote.fromMap(Map<String, dynamic>.from(data)))
+        .toList();
+    final products = productsData
+        .map((data) => Product.fromMap(Map<String, dynamic>.from(data)))
+        .toList();
 
     // Calculate category revenue
     final categoryRev = <String, double>{};
@@ -124,11 +134,13 @@ class _AdminPanelScreenState extends State<AdminPanelScreen> {
             (p) => p.id == item.productId,
             orElse: () => Product(
               id: '',
-              sku: '',
+              model: '',
+              displayName: '',
               name: '',
               description: '',
               category: 'Other',
               price: 0,
+              stock: 0,
               createdAt: DateTime.now(),
             ),
           );
@@ -358,7 +370,7 @@ class _AdminPanelScreenState extends State<AdminPanelScreen> {
           rows: _recentQuotes.map((quote) {
             return DataRow(cells: [
               DataCell(
-                  Text('#${quote.quoteNumber ?? quote.id.substring(0, 8)}')),
+                  Text('#${quote.quoteNumber ?? quote.id?.substring(0, 8) ?? 'N/A'}')),
               DataCell(Text(quote.clientName ?? 'Unknown')),
               DataCell(Text('\$${quote.total.toStringAsFixed(2)}')),
               DataCell(_buildStatusChip(quote.status)),
@@ -444,7 +456,7 @@ class _AdminPanelScreenState extends State<AdminPanelScreen> {
                 ],
                 rows: _users.map((user) {
                   return DataRow(cells: [
-                    DataCell(Text(user.displayName)),
+                    DataCell(Text(user.displayName ?? 'N/A')),
                     DataCell(Text(user.email)),
                     DataCell(_buildRoleChip(user.role)),
                     DataCell(
@@ -509,19 +521,18 @@ class _AdminPanelScreenState extends State<AdminPanelScreen> {
   }
 
   Future<void> _updateUserRole(String userId, String role) async {
-    final authProvider = context.read<AuthProvider>();
-    final success = await authProvider.updateUserRole(
-      userId: userId,
-      role: role,
-    );
-
-    if (success) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('User role updated')),
-      );
+    try {
+      final dbService = ref.read(databaseServiceProvider);
+      await dbService.updateUserProfile(userId, {'role': role});
+      
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('User role updated')),
+        );
+      }
       _loadUsers();
-    } else {
-      _showError('Failed to update user role');
+    } catch (e) {
+      _showError('Failed to update user role: $e');
     }
   }
 
@@ -701,12 +712,15 @@ class _AdminPanelScreenState extends State<AdminPanelScreen> {
               trailing: PopupMenuButton<String>(
                 onSelected: (format) async {
                   try {
-                    final file =
-                        await _exportService.exportProducts(format: format);
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(
-                          content: Text('Products exported to ${file.path}')),
-                    );
+                    // Fetch all products first
+                    final products = CacheManager.getProducts();
+                    await ExportService.exportProducts(products);
+                    if (mounted) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                            content: Text('Products exported successfully')),
+                      );
+                    }
                   } catch (e) {
                     _showError('Export failed: $e');
                   }
@@ -731,12 +745,15 @@ class _AdminPanelScreenState extends State<AdminPanelScreen> {
               trailing: PopupMenuButton<String>(
                 onSelected: (format) async {
                   try {
-                    final file =
-                        await _exportService.exportClients(format: format);
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(
-                          content: Text('Clients exported to ${file.path}')),
-                    );
+                    // Fetch all clients first
+                    final clients = CacheManager.getClients();
+                    await ExportService.exportClients(clients);
+                    if (mounted) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                            content: Text('Clients exported successfully')),
+                      );
+                    }
                   } catch (e) {
                     _showError('Export failed: $e');
                   }
@@ -761,12 +778,15 @@ class _AdminPanelScreenState extends State<AdminPanelScreen> {
               trailing: PopupMenuButton<String>(
                 onSelected: (format) async {
                   try {
-                    final file =
-                        await _exportService.exportQuotes(format: format);
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(
-                          content: Text('Quotes exported to ${file.path}')),
-                    );
+                    // Fetch all quotes first
+                    final quotes = CacheManager.getQuotes();
+                    await ExportService.exportQuotes(quotes);
+                    if (mounted) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                            content: Text('Quotes exported successfully')),
+                      );
+                    }
                   } catch (e) {
                     _showError('Export failed: $e');
                   }
@@ -791,10 +811,12 @@ class _AdminPanelScreenState extends State<AdminPanelScreen> {
               subtitle: const Text('Remove all cached data'),
               trailing: ElevatedButton(
                 onPressed: () async {
-                  await _cacheManager.clearAllCache();
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('Cache cleared')),
-                  );
+                  await CacheManager.clearAllCache();
+                  if (mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text('Cache cleared')),
+                    );
+                  }
                 },
                 child: const Text('Clear'),
               ),

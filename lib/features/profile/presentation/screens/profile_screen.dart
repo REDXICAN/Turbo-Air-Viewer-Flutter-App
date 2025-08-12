@@ -1,18 +1,19 @@
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
-import '../../../../features/auth/presentation/providers/auth_provider.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import '../../../../core/services/offline_service.dart';
 import '../../../../core/services/cache_manager.dart';
+import '../../../auth/presentation/providers/auth_provider.dart';
 
-class ProfileScreen extends StatefulWidget {
-  const ProfileScreen({Key? key}) : super(key: key);
+class ProfileScreen extends ConsumerStatefulWidget {
+  const ProfileScreen({super.key});
 
   @override
-  State<ProfileScreen> createState() => _ProfileScreenState();
+  ConsumerState<ProfileScreen> createState() => _ProfileScreenState();
 }
 
-class _ProfileScreenState extends State<ProfileScreen> {
-  final CacheManager _cacheManager = CacheManager();
+class _ProfileScreenState extends ConsumerState<ProfileScreen> {
+  // Remove instance variable as CacheManager is static
   bool _offlineDataAvailable = false;
   int _syncQueueCount = 0;
 
@@ -23,8 +24,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
   }
 
   Future<void> _checkOfflineData() async {
-    final hasData = await OfflineService.hasOfflineData();
-    final queueCount = OfflineService.getSyncQueueCount();
+    final hasData = await OfflineService.staticHasOfflineData();
+    final queueCount = await OfflineService.staticGetSyncQueueCount();
 
     setState(() {
       _offlineDataAvailable = hasData;
@@ -34,8 +35,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final authProvider = context.watch<AuthProvider>();
-    final user = authProvider.appUser;
+    final userAsync = ref.watch(currentUserProfileProvider);
+    final user = ref.watch(currentUserProvider);
+    final userProfile = userAsync.valueOrNull;
 
     return Scaffold(
       body: SingleChildScrollView(
@@ -69,10 +71,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                 ),
                               )
                             : Text(
-                                user?.displayName
-                                        .substring(0, 1)
-                                        .toUpperCase() ??
-                                    'U',
+                                user?.displayName != null && user!.displayName!.isNotEmpty
+                                        ? user.displayName!.substring(0, 1).toUpperCase()
+                                        : 'U',
                                 style: const TextStyle(
                                   fontSize: 40,
                                   fontWeight: FontWeight.bold,
@@ -106,7 +107,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                           borderRadius: BorderRadius.circular(20),
                         ),
                         child: Text(
-                          user?.role.toUpperCase() ?? 'USER',
+                          userProfile?.role.toUpperCase() ?? 'USER',
                           style: const TextStyle(
                             fontSize: 12,
                             fontWeight: FontWeight.bold,
@@ -294,9 +295,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
   }
 
   void _showEditProfileDialog() {
-    final authProvider = context.read<AuthProvider>();
-    final user = authProvider.appUser;
-    final nameController = TextEditingController(text: user?.displayName);
+    final user = ref.read(currentUserProvider);
+    final userProfile = ref.read(currentUserProfileProvider).valueOrNull;
+    final nameController = TextEditingController(text: userProfile?.displayName ?? user?.displayName);
 
     showDialog(
       context: context,
@@ -321,18 +322,18 @@ class _ProfileScreenState extends State<ProfileScreen> {
           ),
           ElevatedButton(
             onPressed: () async {
-              final success = await authProvider.updateProfile(
-                displayName: nameController.text.trim(),
+              final authService = ref.read(authServiceProvider);
+              await authService.updateUserProfile(
+                FirebaseAuth.instance.currentUser!.uid,
+                {'displayName': nameController.text.trim()},
               );
 
               if (mounted) {
                 Navigator.pop(context);
                 ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(
-                    content: Text(
-                      success ? 'Profile updated' : 'Failed to update profile',
-                    ),
-                    backgroundColor: success ? Colors.green : Colors.red,
+                  const SnackBar(
+                    content: Text('Profile updated'),
+                    backgroundColor: Colors.green,
                   ),
                 );
               }
@@ -345,7 +346,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
   }
 
   void _showChangePasswordDialog() {
-    final authProvider = context.read<AuthProvider>();
     final currentPasswordController = TextEditingController();
     final newPasswordController = TextEditingController();
     final confirmPasswordController = TextEditingController();
@@ -403,10 +403,20 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 return;
               }
 
-              final success = await authProvider.changePassword(
-                currentPassword: currentPasswordController.text,
-                newPassword: newPasswordController.text,
-              );
+              // For password change, we need to reauthenticate first
+              bool success = false;
+              try {
+                final user = FirebaseAuth.instance.currentUser!;
+                final credential = EmailAuthProvider.credential(
+                  email: user.email!,
+                  password: currentPasswordController.text,
+                );
+                await user.reauthenticateWithCredential(credential);
+                await user.updatePassword(newPasswordController.text);
+                success = true;
+              } catch (e) {
+                success = false;
+              }
 
               if (mounted) {
                 Navigator.pop(context);
@@ -415,7 +425,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     content: Text(
                       success
                           ? 'Password changed successfully'
-                          : authProvider.error ?? 'Failed to change password',
+                          : 'Failed to change password',
                     ),
                     backgroundColor: success ? Colors.green : Colors.red,
                   ),
@@ -486,7 +496,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
           ),
           ElevatedButton(
             onPressed: () async {
-              await _cacheManager.clearAllCache();
+              await CacheManager.clearAllCache();
               await _checkOfflineData();
 
               if (mounted) {
@@ -517,8 +527,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
           ),
           ElevatedButton(
             onPressed: () async {
-              final authProvider = context.read<AuthProvider>();
-              await authProvider.signOut();
+              await ref.read(authServiceProvider).signOut();
 
               if (mounted) {
                 Navigator.of(context).pushNamedAndRemoveUntil(
@@ -568,10 +577,20 @@ class _ProfileScreenState extends State<ProfileScreen> {
           ),
           ElevatedButton(
             onPressed: () async {
-              final authProvider = context.read<AuthProvider>();
-              final success = await authProvider.deleteAccount(
-                password: passwordController.text,
-              );
+              // For account deletion, we need to reauthenticate first
+              bool success = false;
+              try {
+                final user = FirebaseAuth.instance.currentUser!;
+                final credential = EmailAuthProvider.credential(
+                  email: user.email!,
+                  password: passwordController.text,
+                );
+                await user.reauthenticateWithCredential(credential);
+                await user.delete();
+                success = true;
+              } catch (e) {
+                success = false;
+              }
 
               if (mounted) {
                 if (success) {
@@ -584,7 +603,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   ScaffoldMessenger.of(context).showSnackBar(
                     SnackBar(
                       content: Text(
-                          authProvider.error ?? 'Failed to delete account'),
+                          'Failed to delete account'),
                       backgroundColor: Colors.red,
                     ),
                   );
