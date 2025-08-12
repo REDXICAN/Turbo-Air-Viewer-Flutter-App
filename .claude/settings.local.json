@@ -13,10 +13,11 @@
       "Bash(firebase deploy:*)",
       "Bash(git add:*)",
       "Bash(git commit:*)",
-      "Bash(git push:*)",
       "Bash(touch:*)"
     ],
     "deny": [],
-    "ask": []
+    "ask": [
+      "Bash(git push:*)"
+    ]
   }
 }

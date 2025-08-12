@@ -137,6 +137,15 @@ flutter run -d chrome
 # Build for production
 flutter build web --release
 
+# Stage changes for commit
+git add -A
+
+# Commit changes (manually)
+git commit -m "Your commit message"
+
+# Push to GitHub (requires manual confirmation)
+git push origin main
+
 # Deploy to Vercel
 vercel --prod
 
