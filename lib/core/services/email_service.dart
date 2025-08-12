@@ -46,7 +46,7 @@ $userSignature
 
       // Set reply-to as the user's email if available
       if (userInfo['email'] != null && userInfo['email'].isNotEmpty) {
-        message.replyTo.add(Address(userInfo['email'], userInfo['name'] ?? ''));
+        message.replyToAddresses.add(Address(userInfo['email'], userInfo['name'] ?? ''));
       }
 
       // Add attachments if provided
@@ -154,9 +154,8 @@ $userSignature
     String? customMessage,
   }) async {
     // Create PDF attachment
-    final attachment = FileAttachment(pdfBytes)
-      ..location = Location.attachment
-      ..fileName = 'Quote_${quoteNumber}.pdf';
+    final attachment = FileAttachment.fromBytes(pdfBytes, 'Quote_$quoteNumber.pdf')
+      ..location = Location.attachment;
 
     // Build email HTML content
     final htmlContent = '''

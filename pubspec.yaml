@@ -18,7 +18,7 @@ dependencies:
   firebase_storage: ^11.6.0
   
   # State Management
-  provider: ^6.1.1
+  flutter_riverpod: ^2.4.9
   
   # Local Storage
   hive: ^2.2.3
@@ -29,7 +29,7 @@ dependencies:
   
   # UI/UX
   cupertino_icons: ^1.0.6
-  fl_chart: ^0.66.0
+  fl_chart: ^0.69.2
   
   # Utilities
   pdf: ^3.10.7
@@ -39,10 +39,6 @@ dependencies:
   intl: ^0.18.1
   excel: ^4.0.0
   mailer: ^6.0.1
-  provider: ^6.1.2
-  fl_chart: ^0.69.2
-  hive: ^2.2.3
-  hive_flutter: ^1.1.0
 
   # Routing
   go_router: ^12.1.3

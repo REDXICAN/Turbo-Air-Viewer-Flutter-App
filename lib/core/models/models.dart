@@ -1,5 +1,8 @@
 // lib/core/models/models.dart
 
+// Export UserRole enum
+export 'user_role.dart';
+
 // UserProfile Model
 class UserProfile {
   final String uid;
@@ -46,6 +49,10 @@ class UserProfile {
       isAdmin: map['isAdmin'] ?? false,
     );
   }
+
+  // JSON methods for compatibility
+  String toJson() => toMap().toString();
+  factory UserProfile.fromJson(Map<String, dynamic> json) => UserProfile.fromMap(json);
 }
 
 // Client Model
@@ -121,6 +128,10 @@ class Client {
           map['updatedAt'] != null ? DateTime.parse(map['updatedAt']) : null,
     );
   }
+
+  // JSON methods for compatibility
+  String toJson() => toMap().toString();
+  factory Client.fromJson(Map<String, dynamic> json) => Client.fromMap(json);
 }
 
 // Product Model
@@ -131,6 +142,9 @@ class Product {
   final String name;
   final String description;
   final String category;
+  final String? subcategory;
+  final String? productType;
+  final String? sku;
   final double price;
   final String? imageUrl;
   final int stock;
@@ -157,6 +171,9 @@ class Product {
     required this.name,
     required this.description,
     required this.category,
+    this.subcategory,
+    this.productType,
+    this.sku,
     required this.price,
     this.imageUrl,
     required this.stock,
@@ -185,6 +202,9 @@ class Product {
       'name': name,
       'description': description,
       'category': category,
+      'subcategory': subcategory,
+      'productType': productType,
+      'sku': sku,
       'price': price,
       'imageUrl': imageUrl,
       'stock': stock,
@@ -214,6 +234,9 @@ class Product {
       name: map['name'] ?? '',
       description: map['description'] ?? '',
       category: map['category'] ?? '',
+      subcategory: map['subcategory'],
+      productType: map['productType'],
+      sku: map['sku'],
       price: (map['price'] ?? 0).toDouble(),
       imageUrl: map['imageUrl'],
       stock: map['stock'] ?? 0,
@@ -236,11 +259,16 @@ class Product {
           map['updatedAt'] != null ? DateTime.parse(map['updatedAt']) : null,
     );
   }
+
+  // JSON methods for compatibility
+  String toJson() => toMap().toString();
+  factory Product.fromJson(Map<String, dynamic> json) => Product.fromMap(json);
 }
 
 // Quote Model
 class Quote {
   final String? id;
+  final String? quoteNumber;
   final String clientId;
   final String? clientName;
   final Client? client;
@@ -257,6 +285,7 @@ class Quote {
 
   Quote({
     this.id,
+    this.quoteNumber,
     required this.clientId,
     this.clientName,
     this.client,
@@ -275,6 +304,7 @@ class Quote {
   Map<String, dynamic> toMap() {
     return {
       'id': id,
+      'quoteNumber': quoteNumber,
       'clientId': clientId,
       'clientName': clientName,
       'client': client?.toMap(),
@@ -294,6 +324,7 @@ class Quote {
   factory Quote.fromMap(Map<String, dynamic> map) {
     return Quote(
       id: map['id'],
+      quoteNumber: map['quoteNumber'],
       clientId: map['clientId'] ?? '',
       clientName: map['clientName'],
       client: map['client'] != null ? Client.fromMap(map['client']) : null,
@@ -313,6 +344,10 @@ class Quote {
       createdBy: map['createdBy'] ?? '',
     );
   }
+
+  // JSON methods for compatibility
+  String toJson() => toMap().toString();
+  factory Quote.fromJson(Map<String, dynamic> json) => Quote.fromMap(json);
 }
 
 // QuoteItem Model
@@ -363,20 +398,30 @@ class QuoteItem {
           DateTime.parse(map['addedAt'] ?? DateTime.now().toIso8601String()),
     );
   }
+
+  // JSON methods for compatibility
+  String toJson() => toMap().toString();
+  factory QuoteItem.fromJson(Map<String, dynamic> json) => QuoteItem.fromMap(json);
 }
 
 // CartItem Model
 class CartItem {
+  final String? id;
+  final String? userId;
   final String productId;
   final String productName;
+  final Product? product;
   final int quantity;
   final double unitPrice;
   final double total;
   final DateTime addedAt;
 
   CartItem({
+    this.id,
+    this.userId,
     required this.productId,
     required this.productName,
+    this.product,
     required this.quantity,
     required this.unitPrice,
     required this.total,
@@ -385,8 +430,11 @@ class CartItem {
 
   Map<String, dynamic> toMap() {
     return {
+      'id': id,
+      'userId': userId,
       'productId': productId,
       'productName': productName,
+      'product': product?.toMap(),
       'quantity': quantity,
       'unitPrice': unitPrice,
       'total': total,
@@ -396,8 +444,11 @@ class CartItem {
 
   factory CartItem.fromMap(Map<String, dynamic> map) {
     return CartItem(
+      id: map['id'],
+      userId: map['userId'],
       productId: map['productId'] ?? '',
       productName: map['productName'] ?? '',
+      product: map['product'] != null ? Product.fromMap(map['product']) : null,
       quantity: map['quantity'] ?? 1,
       unitPrice: (map['unitPrice'] ?? 0).toDouble(),
       total: (map['total'] ?? 0).toDouble(),
@@ -405,4 +456,8 @@ class CartItem {
           DateTime.parse(map['addedAt'] ?? DateTime.now().toIso8601String()),
     );
   }
+
+  // JSON methods for compatibility
+  String toJson() => toMap().toString();
+  factory CartItem.fromJson(Map<String, dynamic> json) => CartItem.fromMap(json);
 }

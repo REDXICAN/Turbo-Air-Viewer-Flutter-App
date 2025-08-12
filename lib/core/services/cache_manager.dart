@@ -226,4 +226,37 @@ class CacheManager {
       rethrow;
     }
   }
+  
+  // Helper methods expected by UI components
+  static List getProducts() {
+    final data = getCachedValue('products_all');
+    if (data is Map) {
+      return data.values.toList();
+    }
+    return [];
+  }
+  
+  static List getClients() {
+    final data = getCachedValue('clients_current_user');
+    if (data is Map) {
+      return data.values.toList();
+    }
+    return [];
+  }
+  
+  static List getQuotes() {
+    final data = getCachedValue('quotes_current_user');
+    if (data is Map) {
+      return data.values.toList();
+    }
+    return [];
+  }
+  
+  static List getCart() {
+    final data = getCachedValue('cart_current_user');
+    if (data is Map) {
+      return data.values.toList();
+    }
+    return [];
+  }
 }

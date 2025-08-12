@@ -205,3 +205,61 @@ class ExportService {
                 }),
               ],
             ),
+            
+            // Summary section
+            pw.SizedBox(height: 20),
+            pw.Row(
+              mainAxisAlignment: pw.MainAxisAlignment.end,
+              children: [
+                pw.Column(
+                  crossAxisAlignment: pw.CrossAxisAlignment.end,
+                  children: [
+                    pw.Text('Subtotal: ${_currencyFormat.format(quoteData['subtotal'] ?? 0)}'),
+                    pw.Text('Tax: ${_currencyFormat.format(quoteData['tax'] ?? 0)}'),
+                    pw.Text(
+                      'Total: ${_currencyFormat.format(quoteData['total'] ?? 0)}',
+                      style: pw.TextStyle(fontSize: 16, fontWeight: pw.FontWeight.bold),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+    
+    return await pdf.save();
+  }
+  
+  // Helper method to build table cells
+  static pw.Widget _buildTableCell(
+    String text, {
+    bool isHeader = false,
+    pw.TextAlign align = pw.TextAlign.left,
+  }) {
+    return pw.Container(
+      padding: const pw.EdgeInsets.all(8),
+      child: pw.Text(
+        text,
+        textAlign: align,
+        style: pw.TextStyle(
+          fontWeight: isHeader ? pw.FontWeight.bold : pw.FontWeight.normal,
+        ),
+      ),
+    );
+  }
+  
+  // Placeholder methods for missing functionality
+  static Future<Uint8List> exportProducts(List products) async {
+    throw UnimplementedError('Product export not implemented');
+  }
+  
+  static Future<Uint8List> exportClients(List clients) async {
+    throw UnimplementedError('Client export not implemented');  
+  }
+  
+  static Future<Uint8List> exportQuotes(List quotes) async {
+    throw UnimplementedError('Quote export not implemented');
+  }
+}

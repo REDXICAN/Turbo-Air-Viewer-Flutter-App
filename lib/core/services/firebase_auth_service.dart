@@ -68,7 +68,7 @@ class FirebaseAuthService {
       'uid': uid,
       'email': email,
       'name': name,
-      'role': 'user',
+      'role': 'distributor',
       'created_at': ServerValue.timestamp,
       'updated_at': ServerValue.timestamp,
     });

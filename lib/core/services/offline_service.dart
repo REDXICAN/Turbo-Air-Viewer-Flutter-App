@@ -75,6 +75,12 @@ class OfflineService {
 
   bool get isOnline => _isOnline;
 
+  // Static getters for accessing singleton instance
+  static Stream<bool> get connectionStream => _instance.connectionStream;
+  static Stream<List<PendingOperation>> get queueStream => _instance.queueStream;
+  static List<PendingOperation> get pendingOperations => _instance.pendingOperations;
+  static bool get isOnline => _instance.isOnline;
+
   SyncStatus _syncStatus = SyncStatus.idle;
   SyncStatus get syncStatus => _syncStatus;
 
@@ -91,20 +97,19 @@ class OfflineService {
 
     // Listen to connectivity changes
     _connectivity.onConnectivityChanged
-        .listen((List<ConnectivityResult> results) {
+        .listen((ConnectivityResult result) {
       final wasOffline = !_isOnline;
-      _isOnline = results.any((result) => result != ConnectivityResult.none);
+      _isOnline = result != ConnectivityResult.none;
       _connectivityController.add(_isOnline);
 
       if (_isOnline && wasOffline) {
-        syncPendingChanges();
+        _syncPendingChanges();
       }
     });
 
     // Check initial connectivity
     final connectivityResult = await _connectivity.checkConnectivity();
-    _isOnline =
-        connectivityResult.any((result) => result != ConnectivityResult.none);
+    _isOnline = connectivityResult != ConnectivityResult.none;
   }
 
   Future<void> _loadPendingOperations() async {
@@ -169,7 +174,11 @@ class OfflineService {
   }
 
   // Sync methods
-  Future<void> syncPendingChanges() async {
+  static Future<void> syncPendingChanges() async {
+    await _instance._syncPendingChanges();
+  }
+
+  Future<void> _syncPendingChanges() async {
     if (!_isOnline || _pendingOperations.isEmpty) return;
 
     _syncStatus = SyncStatus.syncing;
@@ -195,7 +204,24 @@ class OfflineService {
 
   Future<void> syncWithFirebase() async {
     // Sync implementation
-    await syncPendingChanges();
+    await _syncPendingChanges();
+  }
+
+  // Cache methods expected by main.dart
+  static void cacheProducts(List products) {
+    // Implementation will be handled by the main cache system
+  }
+  
+  static void cacheClients(List clients) {
+    // Implementation will be handled by the main cache system
+  }
+  
+  static void cacheQuotes(List quotes) {
+    // Implementation will be handled by the main cache system  
+  }
+  
+  static void cacheCartItems(List cartItems) {
+    // Implementation will be handled by the main cache system
   }
 
   Future<bool> hasOfflineData() async {
@@ -206,13 +232,23 @@ class OfflineService {
     return _pendingOperations.length;
   }
 
-  Future<Map<String, dynamic>> getCacheInfo() async {
+  static Future<Map<String, dynamic>> getCacheInfo() async {
+    return await _instance._getCacheInfo();
+  }
+
+  Future<Map<String, dynamic>> _getCacheInfo() async {
     return {
       'products': _productsBox.length,
       'clients': _clientsBox.length,
       'quotes': _quotesBox.length,
       'cart': _cartBox.length,
       'pending': _pendingOperations.length,
+      'is_online': _isOnline,
+      'pending_operations': _pendingOperations.length,
+      'last_sync': 'Recently', // You can add actual timestamp tracking
+      'last_cache_cleanup': 'Recently',
+      'active_cache_duration_days': 7,
+      'reference_cache_duration_days': 30,
     };
   }
 

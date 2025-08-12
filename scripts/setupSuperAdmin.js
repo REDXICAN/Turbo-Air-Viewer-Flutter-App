@@ -50,7 +50,7 @@ async function setupSuperAdmin() {
     console.log('\n📌 NEXT STEPS:');
     console.log('1. Start your Flutter app');
     console.log('2. Sign up with these credentials:');
-    console.log('   Email: andres@turbairmexico.com');
+    console.log('   Email: andres@turboairmexico.com');
     console.log('   Password: andres123!@#');
     console.log('   Company: Turbo Air Mexico');
     console.log('\n3. This account will automatically become the Super Admin');

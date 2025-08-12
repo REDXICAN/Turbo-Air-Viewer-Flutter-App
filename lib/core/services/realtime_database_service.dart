@@ -340,7 +340,7 @@ class RealtimeDatabaseService {
     required String uid,
     required String email,
     required String name,
-    String role = 'user',
+    String role = 'distributor',
   }) async {
     await _db.ref('user_profiles/$uid').set({
       'uid': uid,
