@@ -13,7 +13,9 @@
       "Bash(firebase deploy:*)",
       "Bash(git add:*)",
       "Bash(git commit:*)",
-      "Bash(touch:*)"
+      "Bash(touch:*)",
+      "Bash(dart run:*)",
+      "Bash(mv:*)"
     ],
     "deny": [],
     "ask": [

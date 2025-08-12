@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:file_picker/file_picker.dart';
+import 'package:firebase_database/firebase_database.dart';
 import '../../../../core/config/app_config.dart';
 import '../../../../core/models/models.dart';
 import '../../../../core/utils/product_image_helper.dart';
@@ -12,37 +13,52 @@ import '../../../../core/services/app_logger.dart';
 import '../../../auth/presentation/providers/auth_provider.dart';
 import '../../widgets/excel_preview_dialog.dart';
 
-// Products provider using Cache Manager
+// Products provider using Firebase directly
 final productsProvider =
-    FutureProvider.family<List<Product>, String?>((ref, category) async {
-  final productsData = CacheManager.getProducts();
-  final products = productsData
-      .map((data) => Product.fromMap(Map<String, dynamic>.from(data)))
-      .toList();
+    StreamProvider.family<List<Product>, String?>((ref, category) {
+  final database = FirebaseDatabase.instance;
   
-  if (category != null && category.isNotEmpty) {
-    return products.where((p) => p.category == category).toList();
-  }
-  
-  return products;
+  return database.ref('products').onValue.map((event) {
+    final List<Product> products = [];
+    if (event.snapshot.value != null) {
+      final data = Map<String, dynamic>.from(event.snapshot.value as Map);
+      data.forEach((key, value) {
+        final productMap = Map<String, dynamic>.from(value);
+        productMap['id'] = key;
+        try {
+          final product = Product.fromMap(productMap);
+          if (category == null || category.isEmpty || product.category == category) {
+            products.add(product);
+          }
+        } catch (e) {
+          AppLogger.error('Error parsing product $key', e, LogCategory.database);
+        }
+      });
+    }
+    products.sort((a, b) => (a.sku ?? '').compareTo(b.sku ?? ''));
+    return products;
+  });
 });
 
 // Search provider
 final searchQueryProvider = StateProvider<String>((ref) => '');
-final searchResultsProvider = FutureProvider<List<Product>>((ref) async {
+final searchResultsProvider = Provider<List<Product>>((ref) {
   final query = ref.watch(searchQueryProvider);
-  if (query.isEmpty) return [];
-
-  final productsData = CacheManager.getProducts();
-  final products = productsData
-      .map((data) => Product.fromMap(Map<String, dynamic>.from(data)))
-      .toList();
+  final productsAsync = ref.watch(productsProvider(null));
   
-  return products.where((product) {
-    return product.name.toLowerCase().contains(query.toLowerCase()) ||
-           product.description.toLowerCase().contains(query.toLowerCase()) ||
-           product.category.toLowerCase().contains(query.toLowerCase());
-  }).toList();
+  if (query.isEmpty) return [];
+  
+  return productsAsync.when(
+    data: (products) {
+      return products.where((product) {
+        return product.name.toLowerCase().contains(query.toLowerCase()) ||
+               product.description.toLowerCase().contains(query.toLowerCase()) ||
+               product.category.toLowerCase().contains(query.toLowerCase());
+      }).toList();
+    },
+    loading: () => [],
+    error: (_, __) => [],
+  );
 });
 
 class ProductsScreen extends ConsumerStatefulWidget {
@@ -250,7 +266,7 @@ class _ProductsScreenState extends ConsumerState<ProductsScreen> {
     final theme = Theme.of(context);
 
     // Get products based on search or category
-    final AsyncValue<List<Product>> productsAsync = _isSearching
+    final productsAsync = _isSearching
         ? ref.watch(searchResultsProvider)
         : ref.watch(productsProvider(selectedCategory));
 
@@ -357,84 +373,90 @@ class _ProductsScreenState extends ConsumerState<ProductsScreen> {
 
           // Products Grid
           Expanded(
-            child: productsAsync.when(
-              data: (products) {
-                if (products.isEmpty) {
-                  return Center(
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Icon(
-                          _isSearching
-                              ? Icons.search_off
-                              : Icons.inventory_2_outlined,
-                          size: 80,
-                          color: theme.disabledColor,
-                        ),
-                        const SizedBox(height: 16),
-                        Text(
-                          _isSearching
-                              ? 'No products found'
-                              : 'No products in this category',
-                          style: theme.textTheme.headlineSmall,
-                        ),
-                        if (_isSearching) ...[
-                          const SizedBox(height: 8),
-                          Text(
-                            'Try a different search term',
-                            style: theme.textTheme.bodyMedium?.copyWith(
-                              color: theme.disabledColor,
-                            ),
+            child: _isSearching
+                ? _buildProductsGrid(ref.watch(searchResultsProvider))
+                : productsAsync.when(
+                    data: (products) => _buildProductsGrid(products),
+                    loading: () => const Center(
+                      child: CircularProgressIndicator(),
+                    ),
+                    error: (error, stack) => Center(
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          const Icon(
+                            Icons.error_outline,
+                            size: 64,
+                            color: Colors.red,
+                          ),
+                          const SizedBox(height: 16),
+                          Text('Error loading products: $error'),
+                          const SizedBox(height: 16),
+                          ElevatedButton(
+                            onPressed: () {
+                              ref.invalidate(productsProvider(selectedCategory));
+                            },
+                            child: const Text('Retry'),
                           ),
                         ],
-                      ],
+                      ),
                     ),
-                  );
-                }
-
-                return GridView.builder(
-                  padding: const EdgeInsets.all(16),
-                  gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                    crossAxisCount: 2,
-                    childAspectRatio: 0.75,
-                    crossAxisSpacing: 16,
-                    mainAxisSpacing: 16,
                   ),
-                  itemCount: products.length,
-                  itemBuilder: (context, index) {
-                    final product = products[index];
-                    return ProductCard(product: product);
-                  },
-                );
-              },
-              loading: () => const Center(
-                child: CircularProgressIndicator(),
-              ),
-              error: (error, stack) => Center(
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    const Icon(
-                      Icons.error_outline,
-                      size: 64,
-                      color: Colors.red,
-                    ),
-                    const SizedBox(height: 16),
-                    Text('Error loading products: $error'),
-                    const SizedBox(height: 16),
-                    ElevatedButton(
-                      onPressed: () {
-                        ref.invalidate(productsProvider(selectedCategory));
-                      },
-                      child: const Text('Retry'),
-                    ),
-                  ],
-                ),
-              ),
-            ),
           ),
         ],
       ),
+    );
+  }
+
+  Widget _buildProductsGrid(List<Product> products) {
+    final theme = Theme.of(context);
+    
+    if (products.isEmpty) {
+      return Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(
+              _isSearching
+                  ? Icons.search_off
+                  : Icons.inventory_2_outlined,
+              size: 80,
+              color: theme.disabledColor,
+            ),
+            const SizedBox(height: 16),
+            Text(
+              _isSearching
+                  ? 'No products found'
+                  : 'No products in this category',
+              style: theme.textTheme.headlineSmall,
+            ),
+            if (_isSearching) ...[
+              const SizedBox(height: 8),
+              Text(
+                'Try a different search term',
+                style: theme.textTheme.bodyMedium?.copyWith(
+                  color: theme.disabledColor,
+                ),
+              ),
+            ],
+          ],
+        ),
+      );
+    }
+
+    return GridView.builder(
+      padding: const EdgeInsets.all(16),
+      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+        crossAxisCount: 2,
+        childAspectRatio: 0.75,
+        crossAxisSpacing: 16,
+        mainAxisSpacing: 16,
+      ),
+      itemCount: products.length,
+      itemBuilder: (context, index) {
+        final product = products[index];
+        return ProductCard(product: product);
+      },
     );
   }
 }
@@ -451,7 +473,6 @@ class ProductCard extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
     final imagePath = ProductImageHelper.getImagePath(product.sku ?? product.model);
-    final dbService = ref.watch(databaseServiceProvider);
 
     return Card(
       elevation: 2,

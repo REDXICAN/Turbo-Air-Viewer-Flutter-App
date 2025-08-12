@@ -56,9 +56,9 @@ $userSignature
 
       // Send email
       await send(message, _smtpServer,
-          timeout: const Duration(seconds: EmailConfig.emailTimeoutSeconds));
+          timeout: const Duration(seconds: SecureEmailConfig.emailTimeoutSeconds));
 
-      if (EmailConfig.enableEmailLogging) {
+      if (SecureEmailConfig.enableEmailLogging) {
         // Email sent successfully
       }
 
