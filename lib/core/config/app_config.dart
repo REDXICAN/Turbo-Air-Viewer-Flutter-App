@@ -3,7 +3,7 @@ import 'package:flutter/foundation.dart';
 
 class AppConfig {
   // Firebase configuration is handled by firebase_options.dart (auto-generated)
-  // No need for manual URLs or keys like with Supabase
+  //   // No need for manual URLs or keys like with Supabase  // REMOVED: Supabase reference
 
   // Cloud Functions URLs (Firebase equivalent)
   // These will be set up after deploying Firebase Functions

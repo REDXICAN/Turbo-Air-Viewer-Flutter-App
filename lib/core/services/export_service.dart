@@ -3,18 +3,17 @@ import 'dart:typed_data';
 import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
 import 'package:excel/excel.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:intl/intl.dart';
 
 class ExportService {
   static Future<Uint8List> generateQuotePDF(String quoteId) async {
-    final supabase = Supabase.instance.client;
+    final _firestore = FirebaseFirestore.instance;
 
     // Get quote details
     final quoteResponse = await supabase
-        .from('quotes')
+        .collection('quotes')
         .select('*, clients(*), quote_items(*, products(*))')
-        .eq('id', quoteId)
+        .where('id', isEqualTo: quoteId)
         .single();
 
     // Create PDF document
@@ -287,13 +286,13 @@ class ExportService {
   }
 
   static Future<Uint8List> generateQuoteExcel(String quoteId) async {
-    final supabase = Supabase.instance.client;
+    final _firestore = FirebaseFirestore.instance;
 
     // Get quote details
     final quoteResponse = await supabase
-        .from('quotes')
+        .collection('quotes')
         .select('*, clients(*), quote_items(*, products(*))')
-        .eq('id', quoteId)
+        .where('id', isEqualTo: quoteId)
         .single();
 
     // Create Excel workbook
@@ -391,14 +390,14 @@ class ExportService {
   }
 
   static Future<Uint8List> generateClientListExcel() async {
-    final supabase = Supabase.instance.client;
-    final user = supabase.auth.currentUser;
+    final _firestore = FirebaseFirestore.instance;
+    final user = _firestore.auth.currentUser;
     if (user == null) throw Exception('User not authenticated');
 
     final response = await supabase
-        .from('clients')
-        .select()
-        .eq('user_id', user.id)
+        .collection('clients')
+        .get()
+        .where('user_id', isEqualTo: user.id)
         .order('company');
 
     final excel = Excel.createExcel();
@@ -437,3 +436,4 @@ class ExportService {
     return Uint8List.fromList(excel.encode()!);
   }
 }
+

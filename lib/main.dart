@@ -2,11 +2,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:firebase_core/firebase_core.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_database/firebase_database.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'core/services/offline_service.dart';
-import 'core/services/cache_manager.dart';
-import 'core/widgets/offline_status_widget.dart';
+import 'package:hive_flutter/hive_flutter.dart';
 import 'firebase_options.dart';
 import 'app.dart';
 
@@ -18,16 +16,22 @@ void main() async {
     options: DefaultFirebaseOptions.currentPlatform,
   );
 
-  // Configure Firestore for offline support
-  FirebaseFirestore.instance.settings = const Settings(
-    persistenceEnabled: true,
-    cacheSizeBytes: Settings.CACHE_SIZE_UNLIMITED,
-  );
+  // Configure Firebase Database for offline support
+  FirebaseDatabase.instance.setPersistenceEnabled(true);
+  FirebaseDatabase.instance
+      .setPersistenceCacheSizeBytes(100 * 1024 * 1024); // 100MB cache
 
-  // Initialize offline service
-  await OfflineService.initialize();
+  // Initialize Hive for local storage
+  await Hive.initFlutter();
 
-  // Pre-cache important collections for offline use
+  // Open Hive boxes for offline caching
+  await Hive.openBox('products_cache');
+  await Hive.openBox('clients_cache');
+  await Hive.openBox('quotes_cache');
+  await Hive.openBox('cart_cache');
+  await Hive.openBox('app_settings');
+
+  // Pre-cache important data for offline use
   await _preCacheData();
 
   runApp(
@@ -43,17 +47,34 @@ Future<void> _preCacheData() async {
     // Get current user
     final user = FirebaseAuth.instance.currentUser;
     if (user != null) {
-      // Enable offline for critical collections
-      await OfflineService.enableOfflineCollection('products');
-      await OfflineService.enableOfflineCollection('clients');
-      await OfflineService.enableOfflineCollection('quotes');
-      await OfflineService.enableOfflineCollection('cart_items');
+      // Keep references synced for offline access
+      final database = FirebaseDatabase.instance;
 
-      // Preload critical data using CacheManager
-      await CacheManager.preloadCriticalData(user.uid);
+      // Keep products synced
+      database.ref('products').keepSynced(true);
+
+      // Keep user's clients synced
+      database
+          .ref('clients')
+          .orderByChild('user_id')
+          .equalTo(user.uid)
+          .keepSynced(true);
+
+      // Keep user's quotes synced
+      database
+          .ref('quotes')
+          .orderByChild('user_id')
+          .equalTo(user.uid)
+          .keepSynced(true);
+
+      // Keep user's cart items synced
+      database
+          .ref('cart_items')
+          .orderByChild('user_id')
+          .equalTo(user.uid)
+          .keepSynced(true);
     }
   } catch (e) {
-    // Use debugPrint instead of print for production
     debugPrint('Error pre-caching data: $e');
   }
 }
