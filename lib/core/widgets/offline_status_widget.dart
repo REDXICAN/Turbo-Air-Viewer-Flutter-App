@@ -2,7 +2,7 @@
 import 'package:flutter/material.dart';
 import '../services/offline_service.dart';
 
-class OfflineStatusWidget extends StatelessWidget {
+class OfflineStatusWidget extends StatefulWidget {
   final Widget child;
 
   const OfflineStatusWidget({
@@ -11,129 +11,134 @@ class OfflineStatusWidget extends StatelessWidget {
   });
 
   @override
+  State<OfflineStatusWidget> createState() => _OfflineStatusWidgetState();
+}
+
+class _OfflineStatusWidgetState extends State<OfflineStatusWidget>
+    with SingleTickerProviderStateMixin {
+  late AnimationController _animationController;
+  late Animation<double> _slideAnimation;
+  bool _isVisible = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _animationController = AnimationController(
+      duration: const Duration(milliseconds: 300),
+      vsync: this,
+    );
+    _slideAnimation = Tween<double>(
+      begin: -1.0,
+      end: 0.0,
+    ).animate(CurvedAnimation(
+      parent: _animationController,
+      curve: Curves.easeInOut,
+    ));
+  }
+
+  @override
+  void dispose() {
+    _animationController.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
     return Stack(
       children: [
-        child,
+        widget.child,
         StreamBuilder<bool>(
-          stream: OfflineService.connectionStream,
+          stream: OfflineService.connectivityStream,
           initialData: OfflineService.isOnline,
           builder: (context, snapshot) {
             final isOnline = snapshot.data ?? true;
+            final pendingCount = OfflineService.getPendingOperationsCount();
 
-            if (isOnline) {
-              return const SizedBox.shrink();
+            // Show banner if offline or has pending operations
+            final shouldShow = !isOnline || (isOnline && pendingCount > 0);
+
+            if (shouldShow != _isVisible) {
+              _isVisible = shouldShow;
+              if (_isVisible) {
+                _animationController.forward();
+              } else {
+                _animationController.reverse();
+              }
             }
 
-            return Positioned(
-              top: 0,
-              left: 0,
-              right: 0,
-              child: Material(
-                child: Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 16,
-                    vertical: 8,
-                  ),
-                  color: Colors.orange.shade900,
-                  child: SafeArea(
-                    bottom: false,
-                    child: Row(
-                      children: [
-                        const Icon(
-                          Icons.wifi_off,
-                          color: Colors.white,
-                          size: 16,
+            return AnimatedBuilder(
+              animation: _slideAnimation,
+              builder: (context, child) {
+                return Transform.translate(
+                  offset: Offset(0, _slideAnimation.value * 48),
+                  child: Align(
+                    alignment: Alignment.topCenter,
+                    child: Material(
+                      elevation: 4,
+                      child: Container(
+                        width: double.infinity,
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 16,
+                          vertical: 12,
                         ),
-                        const SizedBox(width: 8),
-                        const Expanded(
-                          child: Text(
-                            'You are offline. Changes will sync when connection is restored.',
-                            style: TextStyle(
-                              color: Colors.white,
-                              fontSize: 12,
-                            ),
-                          ),
+                        decoration: BoxDecoration(
+                          color: isOnline ? Colors.green : Colors.orange[800],
                         ),
-                        if (OfflineService.pendingOperationsCount > 0)
-                          Container(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 8,
-                              vertical: 2,
-                            ),
-                            decoration: BoxDecoration(
-                              color: Colors.white24,
-                              borderRadius: BorderRadius.circular(12),
-                            ),
-                            child: Text(
-                              '${OfflineService.pendingOperationsCount} pending',
-                              style: const TextStyle(
+                        child: SafeArea(
+                          bottom: false,
+                          child: Row(
+                            children: [
+                              Icon(
+                                isOnline ? Icons.cloud_done : Icons.cloud_off,
                                 color: Colors.white,
-                                fontSize: 11,
+                                size: 20,
                               ),
-                            ),
+                              const SizedBox(width: 12),
+                              Expanded(
+                                child: Text(
+                                  isOnline
+                                      ? pendingCount > 0
+                                          ? 'Syncing $pendingCount pending changes...'
+                                          : 'Back online'
+                                      : 'You are offline. Changes will sync when reconnected.',
+                                  style: const TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 14,
+                                    fontWeight: FontWeight.w500,
+                                  ),
+                                ),
+                              ),
+                              if (pendingCount > 0)
+                                Container(
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 8,
+                                    vertical: 4,
+                                  ),
+                                  decoration: BoxDecoration(
+                                    color: Colors.white.withOpacity(0.2),
+                                    borderRadius: BorderRadius.circular(12),
+                                  ),
+                                  child: Text(
+                                    '$pendingCount',
+                                    style: const TextStyle(
+                                      color: Colors.white,
+                                      fontSize: 12,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
+                                ),
+                            ],
                           ),
-                      ],
+                        ),
+                      ),
                     ),
                   ),
-                ),
-              ),
+                );
+              },
             );
           },
         ),
       ],
-    );
-  }
-}
-
-/// Connection indicator for app bar or other locations
-class ConnectionIndicator extends StatelessWidget {
-  final bool showWhenOnline;
-
-  const ConnectionIndicator({
-    super.key,
-    this.showWhenOnline = false,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return StreamBuilder<bool>(
-      stream: OfflineService.connectionStream,
-      initialData: OfflineService.isOnline,
-      builder: (context, snapshot) {
-        final isOnline = snapshot.data ?? true;
-
-        if (isOnline && !showWhenOnline) {
-          return const SizedBox.shrink();
-        }
-
-        return Container(
-          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-          decoration: BoxDecoration(
-            color: isOnline ? Colors.green : Colors.orange.shade900,
-            borderRadius: BorderRadius.circular(12),
-          ),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(
-                isOnline ? Icons.wifi : Icons.wifi_off,
-                size: 14,
-                color: Colors.white,
-              ),
-              const SizedBox(width: 4),
-              Text(
-                isOnline ? 'Online' : 'Offline',
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontSize: 12,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-            ],
-          ),
-        );
-      },
     );
   }
 }

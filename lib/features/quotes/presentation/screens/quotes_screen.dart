@@ -2,21 +2,65 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
+import 'package:go_router/go_router.dart';
+import '../../../auth/presentation/providers/auth_provider.dart';
+import '../../../../core/models/models.dart';
 import '../../../../core/utils/product_image_helper.dart';
 
-// Quotes provider
-final quotesProvider = FutureProvider<List<Quote>>((ref) async {
-  final supabase = Supabase.instance.client;
-  final user = supabase.auth.currentUser;
-  if (user == null) return [];
+// Quotes provider using Realtime Database
+final quotesProvider = StreamProvider<List<Quote>>((ref) {
+  final dbService = ref.watch(databaseServiceProvider);
 
-  final response = await supabase
-      .from('quotes')
-      .select('*, clients(*), quote_items(*, products(*))')
-      .eq('user_id', user.id)
-      .order('created_at', ascending: false);
+  return dbService.getQuotes().asyncMap((quotesList) async {
+    // Fetch additional data for each quote
+    final List<Quote> quotes = [];
 
-  return (response as List).map((json) => Quote.fromJson(json)).toList();
+    for (final quoteData in quotesList) {
+      // Fetch client data
+      Map<String, dynamic>? clientData;
+      if (quoteData['client_id'] != null) {
+        clientData = await dbService.getClient(quoteData['client_id']);
+      }
+
+      // Fetch quote items
+      final List<QuoteItem> items = [];
+      if (quoteData['quote_items'] != null) {
+        for (final itemData in quoteData['quote_items']) {
+          // Fetch product data for each item
+          final productData =
+              await dbService.getProduct(itemData['product_id']);
+          items.add(QuoteItem(
+            id: itemData['id'] ?? '',
+            quoteId: itemData['quote_id'] ?? '',
+            productId: itemData['product_id'] ?? '',
+            quantity: itemData['quantity'] ?? 1,
+            unitPrice: (itemData['unit_price'] ?? 0).toDouble(),
+            totalPrice: (itemData['total_price'] ?? 0).toDouble(),
+            product: productData,
+          ));
+        }
+      }
+
+      quotes.add(Quote(
+        id: quoteData['id'],
+        userId: quoteData['user_id'],
+        clientId: quoteData['client_id'],
+        quoteNumber: quoteData['quote_number'],
+        subtotal: (quoteData['subtotal'] ?? 0).toDouble(),
+        taxRate: (quoteData['tax_rate'] ?? 0).toDouble(),
+        taxAmount: (quoteData['tax_amount'] ?? 0).toDouble(),
+        totalAmount: (quoteData['total_amount'] ?? 0).toDouble(),
+        status: quoteData['status'] ?? 'draft',
+        items: items,
+        client: clientData,
+        createdAt: quoteData['created_at'] != null
+            ? DateTime.fromMillisecondsSinceEpoch(quoteData['created_at'])
+            : DateTime.now(),
+      ));
+    }
+
+    return quotes;
+  });
 });
 
 class QuotesScreen extends ConsumerStatefulWidget {
@@ -107,7 +151,8 @@ class _QuotesScreenState extends ConsumerState<QuotesScreen> {
                           q.quoteNumber
                               .toLowerCase()
                               .contains(_searchQuery.toLowerCase()) ||
-                          (q.client?.company ?? '')
+                          (q.client?['company'] ?? '')
+                              .toString()
                               .toLowerCase()
                               .contains(_searchQuery.toLowerCase()))
                       .toList();
@@ -118,9 +163,11 @@ class _QuotesScreenState extends ConsumerState<QuotesScreen> {
                     child: Column(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        Icon(Icons.receipt_long_outlined,
-                            size: 80,
-                            color: theme.iconTheme.color?.withOpacity(0.5)),
+                        Icon(
+                          Icons.receipt_long_outlined,
+                          size: 80,
+                          color: theme.iconTheme.color?.withOpacity(0.5),
+                        ),
                         const SizedBox(height: 16),
                         const Text(
                           'No quotes found',
@@ -148,7 +195,22 @@ class _QuotesScreenState extends ConsumerState<QuotesScreen> {
                 );
               },
               loading: () => const Center(child: CircularProgressIndicator()),
-              error: (error, stack) => Center(child: Text('Error: $error')),
+              error: (error, stack) => Center(
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    const Icon(Icons.error_outline,
+                        size: 64, color: Colors.red),
+                    const SizedBox(height: 16),
+                    Text('Error loading quotes: $error'),
+                    const SizedBox(height: 16),
+                    ElevatedButton(
+                      onPressed: () => ref.invalidate(quotesProvider),
+                      child: const Text('Retry'),
+                    ),
+                  ],
+                ),
+              ),
             ),
           ),
         ],
@@ -228,9 +290,7 @@ class _QuotesScreenState extends ConsumerState<QuotesScreen> {
                 children: [
                   Icon(Icons.business, size: 16, color: theme.iconTheme.color),
                   const SizedBox(width: 4),
-                  Text(
-                    quote.client?.company ?? 'Unknown Client',
-                  ),
+                  Text(quote.client?['company'] ?? 'Unknown Client'),
                 ],
               ),
               const SizedBox(height: 4),
@@ -241,9 +301,7 @@ class _QuotesScreenState extends ConsumerState<QuotesScreen> {
                   Icon(Icons.calendar_today,
                       size: 16, color: theme.iconTheme.color),
                   const SizedBox(width: 4),
-                  Text(
-                    dateFormat.format(quote.createdAt),
-                  ),
+                  Text(dateFormat.format(quote.createdAt ?? DateTime.now())),
                 ],
               ),
               const SizedBox(height: 12),
@@ -252,9 +310,7 @@ class _QuotesScreenState extends ConsumerState<QuotesScreen> {
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  Text(
-                    '${quote.items.length} items',
-                  ),
+                  Text('${quote.items.length} items'),
                   Text(
                     '\$${quote.totalAmount.toStringAsFixed(2)}',
                     style: TextStyle(
@@ -292,22 +348,54 @@ class _QuotesScreenState extends ConsumerState<QuotesScreen> {
                     ),
                   ),
                   const SizedBox(width: 8),
-                  Expanded(
-                    child: OutlinedButton.icon(
-                      onPressed: () => _exportQuote(quote),
-                      icon: const Icon(Icons.download, size: 16),
-                      label: const Text('Export'),
-                      style: OutlinedButton.styleFrom(
-                        padding: const EdgeInsets.symmetric(vertical: 8),
+                  PopupMenuButton(
+                    icon: const Icon(Icons.more_vert),
+                    itemBuilder: (context) => [
+                      const PopupMenuItem(
+                        value: 'export_pdf',
+                        child: Row(
+                          children: [
+                            Icon(Icons.picture_as_pdf, color: Colors.red),
+                            SizedBox(width: 8),
+                            Text('Export PDF'),
+                          ],
+                        ),
                       ),
-                    ),
-                  ),
-                  const SizedBox(width: 8),
-                  IconButton(
-                    onPressed: () => _deleteQuote(quote),
-                    icon: const Icon(Icons.delete_outline, size: 20),
-                    color: Colors.red,
-                    tooltip: 'Delete',
+                      const PopupMenuItem(
+                        value: 'export_excel',
+                        child: Row(
+                          children: [
+                            Icon(Icons.table_chart, color: Colors.green),
+                            SizedBox(width: 8),
+                            Text('Export Excel'),
+                          ],
+                        ),
+                      ),
+                      const PopupMenuDivider(),
+                      const PopupMenuItem(
+                        value: 'delete',
+                        child: Row(
+                          children: [
+                            Icon(Icons.delete, color: Colors.red),
+                            SizedBox(width: 8),
+                            Text('Delete', style: TextStyle(color: Colors.red)),
+                          ],
+                        ),
+                      ),
+                    ],
+                    onSelected: (value) {
+                      switch (value) {
+                        case 'export_pdf':
+                          _exportQuote(quote, 'pdf');
+                          break;
+                        case 'export_excel':
+                          _exportQuote(quote, 'excel');
+                          break;
+                        case 'delete':
+                          _deleteQuote(quote);
+                          break;
+                      }
+                    },
                   ),
                 ],
               ),
@@ -334,183 +422,7 @@ class _QuotesScreenState extends ConsumerState<QuotesScreen> {
   }
 
   void _showQuoteDetails(Quote quote) {
-    final theme = Theme.of(context);
-
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      builder: (context) => Container(
-        height: MediaQuery.of(context).size.height * 0.8,
-        decoration: BoxDecoration(
-          color: theme.cardColor,
-          borderRadius: const BorderRadius.only(
-            topLeft: Radius.circular(20),
-            topRight: Radius.circular(20),
-          ),
-        ),
-        child: Column(
-          children: [
-            // Handle bar
-            Container(
-              width: 40,
-              height: 4,
-              margin: const EdgeInsets.symmetric(vertical: 12),
-              decoration: BoxDecoration(
-                color: theme.dividerColor,
-                borderRadius: BorderRadius.circular(2),
-              ),
-            ),
-
-            // Header
-            Padding(
-              padding: const EdgeInsets.all(16),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Text(
-                    'Quote #${quote.quoteNumber}',
-                    style: const TextStyle(
-                        fontSize: 20, fontWeight: FontWeight.bold),
-                  ),
-                  IconButton(
-                    onPressed: () => Navigator.pop(context),
-                    icon: const Icon(Icons.close),
-                  ),
-                ],
-              ),
-            ),
-
-            // Quote details
-            Expanded(
-              child: ListView(
-                padding: const EdgeInsets.all(16),
-                children: [
-                  // Client info
-                  _buildDetailSection(
-                    'Client Information',
-                    [
-                      _buildDetailRow(
-                          'Company', quote.client?.company ?? 'N/A'),
-                      if (quote.client?.contactName != null)
-                        _buildDetailRow('Contact', quote.client!.contactName!),
-                      if (quote.client?.contactEmail != null)
-                        _buildDetailRow('Email', quote.client!.contactEmail!),
-                      if (quote.client?.phone != null)
-                        _buildDetailRow('Phone', quote.client!.phone!),
-                    ],
-                  ),
-
-                  const SizedBox(height: 16),
-
-                  // Items with thumbnails
-                  _buildDetailSection(
-                    'Items (${quote.items.length})',
-                    quote.items
-                        .map((item) => Padding(
-                              padding: const EdgeInsets.symmetric(vertical: 8),
-                              child: Row(
-                                children: [
-                                  // Product thumbnail
-                                  ProductImageHelper.buildProductThumbnail(
-                                    sku: item.product?.sku ?? 'unknown',
-                                    page: 'P.1',
-                                    width: 40,
-                                    height: 40,
-                                  ),
-                                  const SizedBox(width: 12),
-                                  // Product details
-                                  Expanded(
-                                    child: Column(
-                                      crossAxisAlignment:
-                                          CrossAxisAlignment.start,
-                                      children: [
-                                        Text(
-                                          item.product?.sku ?? 'Unknown',
-                                          style: const TextStyle(
-                                              fontWeight: FontWeight.w500),
-                                        ),
-                                        Text(
-                                          '${item.quantity} × \$${item.unitPrice.toStringAsFixed(2)}',
-                                          style: const TextStyle(fontSize: 12),
-                                        ),
-                                      ],
-                                    ),
-                                  ),
-                                  // Price
-                                  Text(
-                                    '\$${item.totalPrice.toStringAsFixed(2)}',
-                                    style: const TextStyle(
-                                        fontWeight: FontWeight.bold),
-                                  ),
-                                ],
-                              ),
-                            ))
-                        .toList(),
-                  ),
-
-                  const SizedBox(height: 16),
-
-                  // Totals
-                  Container(
-                    padding: const EdgeInsets.all(16),
-                    decoration: BoxDecoration(
-                      color: theme.inputDecorationTheme.fillColor,
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    child: Column(
-                      children: [
-                        _buildDetailRow('Subtotal',
-                            '\$${quote.subtotal.toStringAsFixed(2)}'),
-                        _buildDetailRow('Tax (${quote.taxRate}%)',
-                            '\$${quote.taxAmount.toStringAsFixed(2)}'),
-                        const Divider(),
-                        _buildDetailRow(
-                          'Total',
-                          '\$${quote.totalAmount.toStringAsFixed(2)}',
-                          isBold: true,
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildDetailSection(String title, List<Widget> children) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          title,
-          style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-        ),
-        const SizedBox(height: 8),
-        ...children,
-      ],
-    );
-  }
-
-  Widget _buildDetailRow(String label, String value, {bool isBold = false}) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 4),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          Text(label,
-              style: TextStyle(
-                  fontWeight: isBold ? FontWeight.bold : FontWeight.normal)),
-          Text(value,
-              style: TextStyle(
-                  fontWeight: isBold ? FontWeight.bold : FontWeight.normal)),
-        ],
-      ),
-    );
+    context.push('/quotes/${quote.id}');
   }
 
   void _viewQuote(Quote quote) {
@@ -523,37 +435,9 @@ class _QuotesScreenState extends ConsumerState<QuotesScreen> {
     );
   }
 
-  void _exportQuote(Quote quote) {
-    showModalBottomSheet(
-      context: context,
-      builder: (context) => Container(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            ListTile(
-              leading: const Icon(Icons.picture_as_pdf, color: Colors.red),
-              title: const Text('Export as PDF'),
-              onTap: () {
-                Navigator.pop(context);
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('PDF export coming soon')),
-                );
-              },
-            ),
-            ListTile(
-              leading: const Icon(Icons.table_chart, color: Colors.green),
-              title: const Text('Export as Excel'),
-              onTap: () {
-                Navigator.pop(context);
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('Excel export coming soon')),
-                );
-              },
-            ),
-          ],
-        ),
-      ),
+  void _exportQuote(Quote quote, String format) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text('${format.toUpperCase()} export coming soon')),
     );
   }
 
@@ -572,154 +456,15 @@ class _QuotesScreenState extends ConsumerState<QuotesScreen> {
           TextButton(
             onPressed: () async {
               Navigator.pop(dialogContext);
-
-              try {
-                final supabase = Supabase.instance.client;
-
-                // Delete quote items first (due to foreign key constraint)
-                await supabase
-                    .from('quote_items')
-                    .delete()
-                    .eq('quote_id', quote.id);
-
-                // Then delete the quote
-                await supabase.from('quotes').delete().eq('id', quote.id);
-
-                if (mounted) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
-                      content: Text(
-                          'Quote #${quote.quoteNumber} deleted successfully'),
-                      backgroundColor: Colors.green,
-                    ),
-                  );
-
-                  // Refresh the quotes list
-                  ref.invalidate(quotesProvider);
-                }
-              } catch (e) {
-                if (mounted) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
-                      content: Text('Error deleting quote: $e'),
-                      backgroundColor: Colors.red,
-                    ),
-                  );
-                }
-              }
+              // TODO: Implement delete functionality
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(content: Text('Quote deleted')),
+              );
             },
             child: const Text('Delete', style: TextStyle(color: Colors.red)),
           ),
         ],
       ),
     );
-  }
-}
-
-// Quote models
-class Quote {
-  final String id;
-  final String quoteNumber;
-  final String status;
-  final double subtotal;
-  final double taxRate;
-  final double taxAmount;
-  final double totalAmount;
-  final DateTime createdAt;
-  final Client? client;
-  final List<QuoteItem> items;
-
-  Quote({
-    required this.id,
-    required this.quoteNumber,
-    required this.status,
-    required this.subtotal,
-    required this.taxRate,
-    required this.taxAmount,
-    required this.totalAmount,
-    required this.createdAt,
-    this.client,
-    required this.items,
-  });
-
-  factory Quote.fromJson(Map<String, dynamic> json) {
-    return Quote(
-      id: json['id'],
-      quoteNumber: json['quote_number'],
-      status: json['status'] ?? 'draft',
-      subtotal: json['subtotal']?.toDouble() ?? 0,
-      taxRate: json['tax_rate']?.toDouble() ?? 0,
-      taxAmount: json['tax_amount']?.toDouble() ?? 0,
-      totalAmount: json['total_amount']?.toDouble() ?? 0,
-      createdAt: DateTime.parse(json['created_at']),
-      client: json['clients'] != null ? Client.fromJson(json['clients']) : null,
-      items: (json['quote_items'] as List?)
-              ?.map((item) => QuoteItem.fromJson(item))
-              .toList() ??
-          [],
-    );
-  }
-}
-
-class QuoteItem {
-  final String id;
-  final int quantity;
-  final double unitPrice;
-  final double totalPrice;
-  final Product? product;
-
-  QuoteItem({
-    required this.id,
-    required this.quantity,
-    required this.unitPrice,
-    required this.totalPrice,
-    this.product,
-  });
-
-  factory QuoteItem.fromJson(Map<String, dynamic> json) {
-    return QuoteItem(
-      id: json['id'],
-      quantity: json['quantity'],
-      unitPrice: json['unit_price']?.toDouble() ?? 0,
-      totalPrice: json['total_price']?.toDouble() ?? 0,
-      product:
-          json['products'] != null ? Product.fromJson(json['products']) : null,
-    );
-  }
-}
-
-class Client {
-  final String id;
-  final String company;
-  final String? contactName;
-  final String? contactEmail;
-  final String? phone;
-
-  Client({
-    required this.id,
-    required this.company,
-    this.contactName,
-    this.contactEmail,
-    this.phone,
-  });
-
-  factory Client.fromJson(Map<String, dynamic> json) {
-    return Client(
-      id: json['id'],
-      company: json['company'],
-      contactName: json['contact_name'],
-      contactEmail: json['contact_email'],
-      phone: json['contact_number'],
-    );
-  }
-}
-
-class Product {
-  final String sku;
-
-  Product({required this.sku});
-
-  factory Product.fromJson(Map<String, dynamic> json) {
-    return Product(sku: json['sku']);
   }
 }

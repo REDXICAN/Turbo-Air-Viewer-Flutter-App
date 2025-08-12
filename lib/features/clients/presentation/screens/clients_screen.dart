@@ -1,13 +1,14 @@
-﻿import 'package:flutter/material.dart';
+﻿// lib/features/clients/presentation/screens/clients_screen.dart
+import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
 import '../../../auth/presentation/providers/auth_provider.dart';
+import '../../../../core/models/models.dart';
 
-// Clients provider
+// Clients provider using Realtime Database
 final clientsProvider = StreamProvider<List<Client>>((ref) {
-  final firestoreService = ref.watch(firestoreServiceProvider);
+  final dbService = ref.watch(databaseServiceProvider);
 
-  return firestoreService.getClients().map((clientsList) {
+  return dbService.getClients().map((clientsList) {
     return clientsList.map((json) => Client.fromJson(json)).toList();
   });
 });
@@ -30,6 +31,10 @@ class _ClientsScreenState extends ConsumerState<ClientsScreen> {
   final _emailController = TextEditingController();
   final _phoneController = TextEditingController();
   final _addressController = TextEditingController();
+  final _cityController = TextEditingController();
+  final _stateController = TextEditingController();
+  final _zipCodeController = TextEditingController();
+  final _notesController = TextEditingController();
 
   @override
   void dispose() {
@@ -38,6 +43,10 @@ class _ClientsScreenState extends ConsumerState<ClientsScreen> {
     _emailController.dispose();
     _phoneController.dispose();
     _addressController.dispose();
+    _cityController.dispose();
+    _stateController.dispose();
+    _zipCodeController.dispose();
+    _notesController.dispose();
     super.dispose();
   }
 
@@ -54,10 +63,13 @@ class _ClientsScreenState extends ConsumerState<ClientsScreen> {
         foregroundColor: theme.appBarTheme.foregroundColor,
         actions: [
           IconButton(
-            icon: const Icon(Icons.add),
+            icon: Icon(_showAddForm ? Icons.close : Icons.add),
             onPressed: () {
               setState(() {
                 _showAddForm = !_showAddForm;
+                if (!_showAddForm) {
+                  _clearForm();
+                }
               });
             },
           ),
@@ -65,119 +77,125 @@ class _ClientsScreenState extends ConsumerState<ClientsScreen> {
       ),
       body: Column(
         children: [
-          // Selected client indicator
-          if (selectedClient != null)
-            Container(
-              color: Colors.green,
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-              child: Row(
-                children: [
-                  const Icon(Icons.check_circle, color: Colors.white, size: 20),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: Text(
-                      'Selected: ${selectedClient.company}',
-                      style: const TextStyle(color: Colors.white),
-                    ),
-                  ),
-                  TextButton(
-                    onPressed: () {
-                      ref.read(selectedClientProvider.notifier).state = null;
-                    },
-                    child: const Text(
-                      'Clear',
-                      style: TextStyle(color: Colors.white),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-
-          // Add client form
+          // Add Client Form
           if (_showAddForm)
-            Container(
-              padding: const EdgeInsets.all(16),
-              color: theme.cardColor,
-              child: Form(
-                key: _formKey,
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const Text(
-                      'Add New Client',
-                      style:
-                          TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-                    ),
-                    const SizedBox(height: 16),
-                    TextFormField(
-                      controller: _companyController,
-                      decoration: const InputDecoration(
-                        labelText: 'Company Name *',
-                        border: OutlineInputBorder(),
-                        prefixIcon: Icon(Icons.business),
+            Card(
+              margin: const EdgeInsets.all(16),
+              child: Padding(
+                padding: const EdgeInsets.all(16),
+                child: Form(
+                  key: _formKey,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Add New Client',
+                        style: theme.textTheme.titleLarge,
                       ),
-                      validator: (value) {
-                        if (value == null || value.isEmpty) {
-                          return 'Please enter company name';
-                        }
-                        return null;
-                      },
-                    ),
-                    const SizedBox(height: 12),
-                    TextFormField(
-                      controller: _contactNameController,
-                      decoration: const InputDecoration(
-                        labelText: 'Contact Name',
-                        border: OutlineInputBorder(),
-                        prefixIcon: Icon(Icons.person),
-                      ),
-                    ),
-                    const SizedBox(height: 12),
-                    TextFormField(
-                      controller: _emailController,
-                      decoration: const InputDecoration(
-                        labelText: 'Email',
-                        border: OutlineInputBorder(),
-                        prefixIcon: Icon(Icons.email),
-                      ),
-                      keyboardType: TextInputType.emailAddress,
-                    ),
-                    const SizedBox(height: 12),
-                    TextFormField(
-                      controller: _phoneController,
-                      decoration: const InputDecoration(
-                        labelText: 'Phone',
-                        border: OutlineInputBorder(),
-                        prefixIcon: Icon(Icons.phone),
-                      ),
-                      keyboardType: TextInputType.phone,
-                    ),
-                    const SizedBox(height: 12),
-                    TextFormField(
-                      controller: _addressController,
-                      decoration: const InputDecoration(
-                        labelText: 'Address',
-                        border: OutlineInputBorder(),
-                        prefixIcon: Icon(Icons.location_on),
-                      ),
-                      maxLines: 2,
-                    ),
-                    const SizedBox(height: 16),
-                    Row(
-                      children: [
-                        Expanded(
-                          child: ElevatedButton(
-                            onPressed: _saveClient,
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: theme.primaryColor,
-                              foregroundColor: theme.colorScheme.onPrimary,
-                            ),
-                            child: const Text('Save Client'),
-                          ),
+                      const SizedBox(height: 16),
+                      TextFormField(
+                        controller: _companyController,
+                        decoration: const InputDecoration(
+                          labelText: 'Company Name *',
+                          prefixIcon: Icon(Icons.business),
                         ),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: OutlinedButton(
+                        validator: (value) {
+                          if (value == null || value.isEmpty) {
+                            return 'Company name is required';
+                          }
+                          return null;
+                        },
+                      ),
+                      const SizedBox(height: 12),
+                      TextFormField(
+                        controller: _contactNameController,
+                        decoration: const InputDecoration(
+                          labelText: 'Contact Name',
+                          prefixIcon: Icon(Icons.person),
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+                      TextFormField(
+                        controller: _emailController,
+                        decoration: const InputDecoration(
+                          labelText: 'Email',
+                          prefixIcon: Icon(Icons.email),
+                        ),
+                        keyboardType: TextInputType.emailAddress,
+                        validator: (value) {
+                          if (value != null && value.isNotEmpty) {
+                            if (!RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$')
+                                .hasMatch(value)) {
+                              return 'Enter a valid email';
+                            }
+                          }
+                          return null;
+                        },
+                      ),
+                      const SizedBox(height: 12),
+                      TextFormField(
+                        controller: _phoneController,
+                        decoration: const InputDecoration(
+                          labelText: 'Phone',
+                          prefixIcon: Icon(Icons.phone),
+                        ),
+                        keyboardType: TextInputType.phone,
+                      ),
+                      const SizedBox(height: 12),
+                      TextFormField(
+                        controller: _addressController,
+                        decoration: const InputDecoration(
+                          labelText: 'Address',
+                          prefixIcon: Icon(Icons.location_on),
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+                      Row(
+                        children: [
+                          Expanded(
+                            flex: 2,
+                            child: TextFormField(
+                              controller: _cityController,
+                              decoration: const InputDecoration(
+                                labelText: 'City',
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: TextFormField(
+                              controller: _stateController,
+                              decoration: const InputDecoration(
+                                labelText: 'State',
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: TextFormField(
+                              controller: _zipCodeController,
+                              decoration: const InputDecoration(
+                                labelText: 'ZIP',
+                              ),
+                              keyboardType: TextInputType.number,
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 12),
+                      TextFormField(
+                        controller: _notesController,
+                        decoration: const InputDecoration(
+                          labelText: 'Notes',
+                          prefixIcon: Icon(Icons.note),
+                        ),
+                        maxLines: 3,
+                      ),
+                      const SizedBox(height: 16),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.end,
+                        children: [
+                          TextButton(
                             onPressed: () {
                               setState(() {
                                 _showAddForm = false;
@@ -186,15 +204,21 @@ class _ClientsScreenState extends ConsumerState<ClientsScreen> {
                             },
                             child: const Text('Cancel'),
                           ),
-                        ),
-                      ],
-                    ),
-                  ],
+                          const SizedBox(width: 8),
+                          ElevatedButton.icon(
+                            onPressed: _saveClient,
+                            icon: const Icon(Icons.save),
+                            label: const Text('Save Client'),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
                 ),
               ),
             ),
 
-          // Clients list
+          // Clients List
           Expanded(
             child: clientsAsync.when(
               data: (clients) {
@@ -206,28 +230,27 @@ class _ClientsScreenState extends ConsumerState<ClientsScreen> {
                         Icon(
                           Icons.people_outline,
                           size: 80,
-                          color: theme.iconTheme.color?.withOpacity(0.5),
+                          color: theme.disabledColor,
                         ),
                         const SizedBox(height: 16),
-                        const Text(
+                        Text(
                           'No clients yet',
-                          style: TextStyle(fontSize: 18),
+                          style: theme.textTheme.headlineSmall,
                         ),
                         const SizedBox(height: 8),
-                        const Text('Add a client to get started'),
-                        const SizedBox(height: 24),
+                        Text(
+                          'Add your first client to get started',
+                          style: theme.textTheme.bodyMedium?.copyWith(
+                            color: theme.disabledColor,
+                          ),
+                        ),
+                        const SizedBox(height: 16),
                         ElevatedButton.icon(
                           onPressed: () {
-                            setState(() {
-                              _showAddForm = true;
-                            });
+                            setState(() => _showAddForm = true);
                           },
                           icon: const Icon(Icons.add),
-                          label: const Text('Add First Client'),
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: theme.primaryColor,
-                            foregroundColor: theme.colorScheme.onPrimary,
-                          ),
+                          label: const Text('Add Client'),
                         ),
                       ],
                     ),
@@ -243,7 +266,6 @@ class _ClientsScreenState extends ConsumerState<ClientsScreen> {
 
                     return Card(
                       elevation: isSelected ? 4 : 1,
-                      margin: const EdgeInsets.only(bottom: 12),
                       color: isSelected
                           ? theme.primaryColor.withOpacity(0.1)
                           : null,
@@ -251,91 +273,119 @@ class _ClientsScreenState extends ConsumerState<ClientsScreen> {
                         leading: CircleAvatar(
                           backgroundColor: isSelected
                               ? theme.primaryColor
-                              : theme.dividerColor,
+                              : theme.disabledColor.withOpacity(0.3),
                           child: Text(
                             client.company[0].toUpperCase(),
                             style: TextStyle(
                               color: isSelected
-                                  ? theme.colorScheme.onPrimary
+                                  ? Colors.white
                                   : theme.textTheme.bodyLarge?.color,
-                              fontWeight: FontWeight.bold,
                             ),
                           ),
                         ),
                         title: Text(
                           client.company,
-                          style: const TextStyle(fontWeight: FontWeight.bold),
+                          style: theme.textTheme.titleMedium?.copyWith(
+                            fontWeight: isSelected ? FontWeight.bold : null,
+                          ),
                         ),
                         subtitle: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             if (client.contactName != null)
                               Text('Contact: ${client.contactName}'),
-                            if (client.contactEmail != null)
-                              Text('Email: ${client.contactEmail}'),
+                            if (client.email != null)
+                              Text('Email: ${client.email}'),
                             if (client.phone != null)
                               Text('Phone: ${client.phone}'),
                           ],
                         ),
-                        trailing: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            if (isSelected)
-                              const Icon(Icons.check_circle,
-                                  color: Colors.green)
-                            else
-                              OutlinedButton(
-                                onPressed: () {
-                                  ref
-                                      .read(selectedClientProvider.notifier)
-                                      .state = client;
-                                },
-                                child: const Text('Select'),
+                        trailing: PopupMenuButton(
+                          itemBuilder: (context) => [
+                            PopupMenuItem(
+                              value: 'select',
+                              child: Row(
+                                children: const [
+                                  Icon(Icons.check_circle_outline),
+                                  SizedBox(width: 8),
+                                  Text('Select'),
+                                ],
                               ),
-                            PopupMenuButton(
-                              itemBuilder: (context) => [
-                                const PopupMenuItem(
-                                  value: 'edit',
-                                  child: Row(
-                                    children: [
-                                      Icon(Icons.edit, size: 20),
-                                      SizedBox(width: 8),
-                                      Text('Edit'),
-                                    ],
-                                  ),
-                                ),
-                                const PopupMenuItem(
-                                  value: 'delete',
-                                  child: Row(
-                                    children: [
-                                      Icon(Icons.delete,
-                                          size: 20, color: Colors.red),
-                                      SizedBox(width: 8),
-                                      Text('Delete',
-                                          style: TextStyle(color: Colors.red)),
-                                    ],
-                                  ),
-                                ),
-                              ],
-                              onSelected: (value) {
-                                if (value == 'edit') {
-                                  _editClient(client);
-                                } else if (value == 'delete') {
-                                  _deleteClient(client);
-                                }
-                              },
+                            ),
+                            PopupMenuItem(
+                              value: 'edit',
+                              child: Row(
+                                children: const [
+                                  Icon(Icons.edit),
+                                  SizedBox(width: 8),
+                                  Text('Edit'),
+                                ],
+                              ),
+                            ),
+                            PopupMenuItem(
+                              value: 'delete',
+                              child: Row(
+                                children: const [
+                                  Icon(Icons.delete, color: Colors.red),
+                                  SizedBox(width: 8),
+                                  Text('Delete',
+                                      style: TextStyle(color: Colors.red)),
+                                ],
+                              ),
                             ),
                           ],
+                          onSelected: (value) {
+                            switch (value) {
+                              case 'select':
+                                ref
+                                    .read(selectedClientProvider.notifier)
+                                    .state = client;
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  SnackBar(
+                                    content:
+                                        Text('Selected: ${client.company}'),
+                                  ),
+                                );
+                                break;
+                              case 'edit':
+                                _editClient(client);
+                                break;
+                              case 'delete':
+                                _deleteClient(client);
+                                break;
+                            }
+                          },
                         ),
-                        isThreeLine: client.contactName != null,
+                        onTap: () {
+                          ref.read(selectedClientProvider.notifier).state =
+                              client;
+                        },
                       ),
                     );
                   },
                 );
               },
-              loading: () => const Center(child: CircularProgressIndicator()),
+              loading: () => const Center(
+                child: CircularProgressIndicator(),
+              ),
               error: (error, stack) => Center(
-                child: Text('Error loading clients: $error'),
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    const Icon(
+                      Icons.error_outline,
+                      size: 64,
+                      color: Colors.red,
+                    ),
+                    const SizedBox(height: 16),
+                    Text('Error loading clients: $error'),
+                    const SizedBox(height: 16),
+                    ElevatedButton(
+                      onPressed: () => ref.invalidate(clientsProvider),
+                      child: const Text('Retry'),
+                    ),
+                  ],
+                ),
               ),
             ),
           ),
@@ -350,51 +400,46 @@ class _ClientsScreenState extends ConsumerState<ClientsScreen> {
     _emailController.clear();
     _phoneController.clear();
     _addressController.clear();
+    _cityController.clear();
+    _stateController.clear();
+    _zipCodeController.clear();
+    _notesController.clear();
   }
 
   Future<void> _saveClient() async {
     if (!_formKey.currentState!.validate()) return;
 
     try {
-      final user = ref.read(authStateProvider).valueOrNull;
+      final dbService = ref.read(databaseServiceProvider);
 
-      if (user == null) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Please sign in first')),
-        );
-        return;
-      }
-
-      final firestoreService = ref.read(firestoreServiceProvider);
-
-      await firestoreService.addClient({
+      await dbService.addClient({
         'company': _companyController.text,
         'contact_name': _contactNameController.text.isEmpty
             ? null
             : _contactNameController.text,
-        'contact_email':
-            _emailController.text.isEmpty ? null : _emailController.text,
-        'contact_number':
-            _phoneController.text.isEmpty ? null : _phoneController.text,
+        'email': _emailController.text.isEmpty ? null : _emailController.text,
+        'phone': _phoneController.text.isEmpty ? null : _phoneController.text,
         'address':
             _addressController.text.isEmpty ? null : _addressController.text,
+        'city': _cityController.text.isEmpty ? null : _cityController.text,
+        'state': _stateController.text.isEmpty ? null : _stateController.text,
+        'zip_code':
+            _zipCodeController.text.isEmpty ? null : _zipCodeController.text,
+        'notes': _notesController.text.isEmpty ? null : _notesController.text,
+      });
+
+      setState(() {
+        _showAddForm = false;
+        _clearForm();
       });
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content:
-                Text('Client "${_companyController.text}" added successfully'),
+          const SnackBar(
+            content: Text('Client added successfully'),
             backgroundColor: Colors.green,
           ),
         );
-
-        setState(() {
-          _showAddForm = false;
-          _clearForm();
-        });
-
-        ref.invalidate(clientsProvider);
       }
     } catch (e) {
       if (mounted) {
@@ -409,254 +454,53 @@ class _ClientsScreenState extends ConsumerState<ClientsScreen> {
   }
 
   void _editClient(Client client) {
-    final theme = Theme.of(context);
-    _companyController.text = client.company;
-    _contactNameController.text = client.contactName ?? '';
-    _emailController.text = client.contactEmail ?? '';
-    _phoneController.text = client.phone ?? '';
-    _addressController.text = client.address ?? '';
-
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Edit Client'),
-        content: SingleChildScrollView(
-          child: Form(
-            key: _formKey,
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                TextFormField(
-                  controller: _companyController,
-                  decoration: const InputDecoration(
-                    labelText: 'Company Name *',
-                    prefixIcon: Icon(Icons.business),
-                  ),
-                  validator: (value) {
-                    if (value == null || value.isEmpty) {
-                      return 'Please enter company name';
-                    }
-                    return null;
-                  },
-                ),
-                const SizedBox(height: 12),
-                TextFormField(
-                  controller: _contactNameController,
-                  decoration: const InputDecoration(
-                    labelText: 'Contact Name',
-                    prefixIcon: Icon(Icons.person),
-                  ),
-                ),
-                const SizedBox(height: 12),
-                TextFormField(
-                  controller: _emailController,
-                  decoration: const InputDecoration(
-                    labelText: 'Email',
-                    prefixIcon: Icon(Icons.email),
-                  ),
-                  keyboardType: TextInputType.emailAddress,
-                ),
-                const SizedBox(height: 12),
-                TextFormField(
-                  controller: _phoneController,
-                  decoration: const InputDecoration(
-                    labelText: 'Phone',
-                    prefixIcon: Icon(Icons.phone),
-                  ),
-                  keyboardType: TextInputType.phone,
-                ),
-                const SizedBox(height: 12),
-                TextFormField(
-                  controller: _addressController,
-                  decoration: const InputDecoration(
-                    labelText: 'Address',
-                    prefixIcon: Icon(Icons.location_on),
-                  ),
-                  maxLines: 2,
-                ),
-              ],
-            ),
-          ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () {
-              Navigator.pop(context);
-              _clearForm();
-            },
-            child: const Text('Cancel'),
-          ),
-          ElevatedButton(
-            onPressed: () async {
-              if (!_formKey.currentState!.validate()) return;
-
-              try {
-                final firestoreService = ref.read(firestoreServiceProvider);
-
-                await firestoreService.updateClient(client.id, {
-                  'company': _companyController.text,
-                  'contact_name': _contactNameController.text.isEmpty
-                      ? null
-                      : _contactNameController.text,
-                  'contact_email': _emailController.text.isEmpty
-                      ? null
-                      : _emailController.text,
-                  'contact_number': _phoneController.text.isEmpty
-                      ? null
-                      : _phoneController.text,
-                  'address': _addressController.text.isEmpty
-                      ? null
-                      : _addressController.text,
-                });
-
-                if (!context.mounted) return;
-
-                Navigator.pop(context);
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(
-                    content: Text('Client updated successfully'),
-                    backgroundColor: Colors.green,
-                  ),
-                );
-                _clearForm();
-                ref.invalidate(clientsProvider);
-              } catch (e) {
-                if (!context.mounted) return;
-
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(
-                    content: Text('Error updating client: $e'),
-                    backgroundColor: Colors.red,
-                  ),
-                );
-              }
-            },
-            style: ElevatedButton.styleFrom(
-              backgroundColor: theme.primaryColor,
-              foregroundColor: theme.colorScheme.onPrimary,
-            ),
-            child: const Text('Update'),
-          ),
-        ],
-      ),
+    // TODO: Implement edit functionality
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Edit functionality coming soon')),
     );
   }
 
-  void _deleteClient(Client client) {
-    showDialog(
+  Future<void> _deleteClient(Client client) async {
+    final confirm = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
         title: const Text('Delete Client'),
-        content: Text('Are you sure you want to delete "${client.company}"?'),
+        content: Text('Are you sure you want to delete ${client.company}?'),
         actions: [
           TextButton(
-            onPressed: () => Navigator.pop(context),
+            onPressed: () => Navigator.pop(context, false),
             child: const Text('Cancel'),
           ),
           TextButton(
-            onPressed: () async {
-              Navigator.pop(context);
-
-              try {
-                final firestoreService = ref.read(firestoreServiceProvider);
-
-                // Check if client has quotes
-                final quotesCount = await firestoreService.getCount(
-                  'quotes',
-                  where: {'client_id': client.id},
-                );
-
-                if (quotesCount > 0) {
-                  if (!context.mounted) return;
-
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
-                      content:
-                          Text('Cannot delete client with existing quotes'),
-                      backgroundColor: Colors.orange,
-                    ),
-                  );
-                  return;
-                }
-
-                // Delete client
-                await firestoreService.deleteClient(client.id);
-
-                if (!context.mounted) return;
-
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(
-                    content: Text('Client "${client.company}" deleted'),
-                    backgroundColor: Colors.green,
-                  ),
-                );
-                ref.invalidate(clientsProvider);
-
-                // Clear selected client if it was deleted
-                if (ref.read(selectedClientProvider)?.id == client.id) {
-                  ref.read(selectedClientProvider.notifier).state = null;
-                }
-              } catch (e) {
-                if (mounted) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
-                      content: Text('Error deleting client: $e'),
-                      backgroundColor: Colors.red,
-                    ),
-                  );
-                }
-              }
-            },
+            onPressed: () => Navigator.pop(context, true),
             child: const Text('Delete', style: TextStyle(color: Colors.red)),
           ),
         ],
       ),
     );
-  }
-}
 
-// Client model
-class Client {
-  final String id;
-  final String userId;
-  final String company;
-  final String? contactName;
-  final String? contactEmail;
-  final String? phone;
-  final String? address;
-  final DateTime createdAt;
+    if (confirm != true) return;
 
-  Client({
-    required this.id,
-    required this.userId,
-    required this.company,
-    this.contactName,
-    this.contactEmail,
-    this.phone,
-    this.address,
-    required this.createdAt,
-  });
+    try {
+      final dbService = ref.read(databaseServiceProvider);
+      await dbService.deleteClient(client.id);
 
-  factory Client.fromJson(Map<String, dynamic> json) {
-    // Handle Firestore Timestamp
-    DateTime createdAt;
-    if (json['created_at'] is Timestamp) {
-      createdAt = (json['created_at'] as Timestamp).toDate();
-    } else if (json['created_at'] is String) {
-      createdAt = DateTime.parse(json['created_at']);
-    } else {
-      createdAt = DateTime.now();
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Client deleted successfully'),
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error deleting client: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
     }
-
-    return Client(
-      id: json['id'] ?? '',
-      userId: json['user_id'] ?? '',
-      company: json['company'] ?? '',
-      contactName: json['contact_name'],
-      contactEmail: json['contact_email'],
-      phone: json['contact_number'],
-      address: json['address'],
-      createdAt: createdAt,
-    );
   }
 }

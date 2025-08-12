@@ -1,0 +1,490 @@
+// lib/features/quotes/presentation/screens/quote_detail_screen.dart
+import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:intl/intl.dart';
+import '../../../auth/presentation/providers/auth_provider.dart';
+import '../../../../core/models/models.dart';
+import '../../../../core/utils/product_image_helper.dart';
+
+// Quote detail provider
+final quoteDetailProvider =
+    FutureProvider.family<Quote?, String>((ref, quoteId) async {
+  final dbService = ref.watch(databaseServiceProvider);
+  final quoteData = await dbService.getQuote(quoteId);
+
+  if (quoteData == null) return null;
+
+  // Fetch client data
+  Map<String, dynamic>? clientData;
+  if (quoteData['client_id'] != null) {
+    clientData = await dbService.getClient(quoteData['client_id']);
+  }
+
+  // Fetch quote items with product details
+  final List<QuoteItem> items = [];
+  // Note: In a real implementation, you'd fetch quote_items from the database
+  // For now, we'll use empty list as placeholder
+
+  return Quote(
+    id: quoteData['id'],
+    userId: quoteData['user_id'],
+    clientId: quoteData['client_id'],
+    quoteNumber: quoteData['quote_number'],
+    subtotal: (quoteData['subtotal'] ?? 0).toDouble(),
+    taxRate: (quoteData['tax_rate'] ?? 0).toDouble(),
+    taxAmount: (quoteData['tax_amount'] ?? 0).toDouble(),
+    totalAmount: (quoteData['total_amount'] ?? 0).toDouble(),
+    status: quoteData['status'] ?? 'draft',
+    items: items,
+    client: clientData,
+    createdAt: quoteData['created_at'] != null
+        ? DateTime.fromMillisecondsSinceEpoch(quoteData['created_at'])
+        : DateTime.now(),
+  );
+});
+
+class QuoteDetailScreen extends ConsumerWidget {
+  final String quoteId;
+
+  const QuoteDetailScreen({
+    super.key,
+    required this.quoteId,
+  });
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final quoteAsync = ref.watch(quoteDetailProvider(quoteId));
+    final theme = Theme.of(context);
+    final dateFormat = DateFormat('MMMM dd, yyyy');
+    final currencyFormat =
+        NumberFormat.currency(symbol: '\$', decimalDigits: 2);
+
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('Quote Details'),
+        backgroundColor: theme.primaryColor,
+        foregroundColor: theme.appBarTheme.foregroundColor,
+        actions: [
+          PopupMenuButton(
+            itemBuilder: (context) => [
+              const PopupMenuItem(
+                value: 'email',
+                child: Row(
+                  children: [
+                    Icon(Icons.email),
+                    SizedBox(width: 8),
+                    Text('Send Email'),
+                  ],
+                ),
+              ),
+              const PopupMenuItem(
+                value: 'pdf',
+                child: Row(
+                  children: [
+                    Icon(Icons.picture_as_pdf, color: Colors.red),
+                    SizedBox(width: 8),
+                    Text('Export PDF'),
+                  ],
+                ),
+              ),
+              const PopupMenuItem(
+                value: 'excel',
+                child: Row(
+                  children: [
+                    Icon(Icons.table_chart, color: Colors.green),
+                    SizedBox(width: 8),
+                    Text('Export Excel'),
+                  ],
+                ),
+              ),
+              const PopupMenuDivider(),
+              const PopupMenuItem(
+                value: 'duplicate',
+                child: Row(
+                  children: [
+                    Icon(Icons.copy),
+                    SizedBox(width: 8),
+                    Text('Duplicate'),
+                  ],
+                ),
+              ),
+              const PopupMenuItem(
+                value: 'delete',
+                child: Row(
+                  children: [
+                    Icon(Icons.delete, color: Colors.red),
+                    SizedBox(width: 8),
+                    Text('Delete', style: TextStyle(color: Colors.red)),
+                  ],
+                ),
+              ),
+            ],
+            onSelected: (value) {
+              // Handle menu actions
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(content: Text('$value action coming soon')),
+              );
+            },
+          ),
+        ],
+      ),
+      body: quoteAsync.when(
+        data: (quote) {
+          if (quote == null) {
+            return const Center(child: Text('Quote not found'));
+          }
+
+          return SingleChildScrollView(
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Quote header card
+                Card(
+                  child: Padding(
+                    padding: const EdgeInsets.all(16),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  'Quote #${quote.quoteNumber}',
+                                  style:
+                                      theme.textTheme.headlineSmall?.copyWith(
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                                const SizedBox(height: 4),
+                                Text(
+                                  dateFormat.format(
+                                      quote.createdAt ?? DateTime.now()),
+                                  style: theme.textTheme.bodyMedium?.copyWith(
+                                    color: Colors.grey,
+                                  ),
+                                ),
+                              ],
+                            ),
+                            _buildStatusChip(quote.status, theme),
+                          ],
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 16),
+
+                // Client information
+                Card(
+                  child: Padding(
+                    padding: const EdgeInsets.all(16),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          children: [
+                            Icon(Icons.business, color: theme.primaryColor),
+                            const SizedBox(width: 8),
+                            Text(
+                              'Client Information',
+                              style: theme.textTheme.titleMedium?.copyWith(
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 16),
+                        if (quote.client != null) ...[
+                          _buildInfoRow(
+                              'Company', quote.client!['company'] ?? 'N/A'),
+                          if (quote.client!['contact_name'] != null)
+                            _buildInfoRow(
+                                'Contact', quote.client!['contact_name']),
+                          if (quote.client!['email'] != null)
+                            _buildInfoRow('Email', quote.client!['email']),
+                          if (quote.client!['phone'] != null)
+                            _buildInfoRow('Phone', quote.client!['phone']),
+                          if (quote.client!['address'] != null)
+                            _buildInfoRow('Address', quote.client!['address']),
+                        ] else
+                          const Text('No client information'),
+                      ],
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 16),
+
+                // Quote items
+                Card(
+                  child: Padding(
+                    padding: const EdgeInsets.all(16),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          children: [
+                            Icon(Icons.inventory_2, color: theme.primaryColor),
+                            const SizedBox(width: 8),
+                            Text(
+                              'Items (${quote.items.length})',
+                              style: theme.textTheme.titleMedium?.copyWith(
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 16),
+                        if (quote.items.isEmpty)
+                          const Center(
+                            child: Padding(
+                              padding: EdgeInsets.all(32),
+                              child: Text('No items in this quote'),
+                            ),
+                          )
+                        else
+                          ...quote.items
+                              .map((item) => _buildItemRow(item, theme)),
+                      ],
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 16),
+
+                // Totals
+                Card(
+                  child: Padding(
+                    padding: const EdgeInsets.all(16),
+                    child: Column(
+                      children: [
+                        _buildTotalRow(
+                            'Subtotal', currencyFormat.format(quote.subtotal)),
+                        const SizedBox(height: 8),
+                        _buildTotalRow(
+                          'Tax (${quote.taxRate.toStringAsFixed(1)}%)',
+                          currencyFormat.format(quote.taxAmount),
+                        ),
+                        const Divider(height: 24),
+                        _buildTotalRow(
+                          'Total',
+                          currencyFormat.format(quote.totalAmount),
+                          isTotal: true,
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 24),
+
+                // Action buttons
+                Row(
+                  children: [
+                    Expanded(
+                      child: OutlinedButton.icon(
+                        onPressed: () {
+                          // Handle edit
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                                content:
+                                    Text('Edit functionality coming soon')),
+                          );
+                        },
+                        icon: const Icon(Icons.edit),
+                        label: const Text('Edit Quote'),
+                        style: OutlinedButton.styleFrom(
+                          padding: const EdgeInsets.symmetric(vertical: 12),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 16),
+                    Expanded(
+                      child: ElevatedButton.icon(
+                        onPressed: () {
+                          // Handle send
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                                content:
+                                    Text('Send functionality coming soon')),
+                          );
+                        },
+                        icon: const Icon(Icons.send),
+                        label: const Text('Send Quote'),
+                        style: ElevatedButton.styleFrom(
+                          padding: const EdgeInsets.symmetric(vertical: 12),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          );
+        },
+        loading: () => const Center(child: CircularProgressIndicator()),
+        error: (error, _) => Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              const Icon(Icons.error_outline, size: 64, color: Colors.red),
+              const SizedBox(height: 16),
+              Text('Error: $error'),
+              const SizedBox(height: 16),
+              ElevatedButton(
+                onPressed: () => ref.invalidate(quoteDetailProvider(quoteId)),
+                child: const Text('Retry'),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildStatusChip(String status, ThemeData theme) {
+    Color color;
+    switch (status.toLowerCase()) {
+      case 'draft':
+        color = Colors.grey;
+        break;
+      case 'sent':
+        color = Colors.blue;
+        break;
+      case 'accepted':
+        color = Colors.green;
+        break;
+      case 'rejected':
+        color = Colors.red;
+        break;
+      default:
+        color = Colors.grey;
+    }
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+      decoration: BoxDecoration(
+        color: color.withOpacity(0.1),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: color),
+      ),
+      child: Text(
+        status.toUpperCase(),
+        style: TextStyle(
+          color: color,
+          fontSize: 12,
+          fontWeight: FontWeight.bold,
+        ),
+      ),
+    );
+  }
+
+  Widget _buildInfoRow(String label, String value) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 4),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          SizedBox(
+            width: 100,
+            child: Text(
+              label,
+              style: const TextStyle(
+                color: Colors.grey,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+          ),
+          Expanded(
+            child: Text(
+              value,
+              style: const TextStyle(fontWeight: FontWeight.w600),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildItemRow(QuoteItem item, ThemeData theme) {
+    return Container(
+      padding: const EdgeInsets.symmetric(vertical: 12),
+      decoration: BoxDecoration(
+        border: Border(
+          bottom: BorderSide(color: theme.dividerColor),
+        ),
+      ),
+      child: Row(
+        children: [
+          // Product image thumbnail
+          if (item.product != null)
+            ProductImageHelper.buildProductThumbnail(
+              sku: item.product!['sku'] ?? '',
+              size: 50,
+            ),
+          const SizedBox(width: 12),
+          // Product details
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  item.product?['sku'] ?? 'Unknown Product',
+                  style: const TextStyle(fontWeight: FontWeight.bold),
+                ),
+                Text(
+                  item.product?['product_type'] ?? '',
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: Colors.grey[600],
+                  ),
+                ),
+              ],
+            ),
+          ),
+          // Quantity and price
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.end,
+            children: [
+              Text(
+                'Qty: ${item.quantity}',
+                style: const TextStyle(fontWeight: FontWeight.w500),
+              ),
+              Text(
+                '\$${item.totalPrice.toStringAsFixed(2)}',
+                style: TextStyle(
+                  fontWeight: FontWeight.bold,
+                  color: theme.primaryColor,
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildTotalRow(String label, String value, {bool isTotal = false}) {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      children: [
+        Text(
+          label,
+          style: TextStyle(
+            fontSize: isTotal ? 18 : 14,
+            fontWeight: isTotal ? FontWeight.bold : FontWeight.normal,
+          ),
+        ),
+        Text(
+          value,
+          style: TextStyle(
+            fontSize: isTotal ? 20 : 16,
+            fontWeight: FontWeight.bold,
+            color: isTotal ? const Color(0xFF20429C) : null,
+          ),
+        ),
+      ],
+    );
+  }
+}

@@ -9,83 +9,49 @@ class AppTheme {
       brightness: brightness,
       useMaterial3: true,
 
-      // Primary Colors
-      primaryColor: const Color(0xFF20429C),
-      primarySwatch: Colors.blue,
+      // Primary colors
+      primaryColor: isDark ? const Color(0xFF4A6EC5) : const Color(0xFF20429C),
+      primaryColorDark: const Color(0xFF1A3478),
+      primaryColorLight: const Color(0xFF6B8ADB),
 
-      // Color Scheme
+      // Color scheme
       colorScheme: ColorScheme.fromSeed(
         seedColor: const Color(0xFF20429C),
         brightness: brightness,
       ),
 
-      // Scaffold Background
+      // Scaffold background
       scaffoldBackgroundColor:
           isDark ? const Color(0xFF121212) : Colors.grey[50],
 
-      // AppBar Theme
-      appBarTheme: const AppBarTheme(
-        backgroundColor: Color(0xFF20429C),
+      // AppBar theme
+      appBarTheme: AppBarTheme(
+        backgroundColor:
+            isDark ? const Color(0xFF1E1E1E) : const Color(0xFF20429C),
         foregroundColor: Colors.white,
-        elevation: 0,
+        elevation: isDark ? 0 : 2,
         centerTitle: false,
-        titleTextStyle: TextStyle(
+        titleTextStyle: const TextStyle(
           fontSize: 20,
           fontWeight: FontWeight.w600,
           color: Colors.white,
         ),
-        iconTheme: IconThemeData(color: Colors.white),
       ),
 
-      // Card Theme
+      // Card theme
       cardTheme: CardTheme(
-        elevation: isDark ? 4 : 2,
+        color: isDark ? const Color(0xFF1E1E1E) : Colors.white,
+        elevation: isDark ? 2 : 1,
+        margin: EdgeInsets.zero,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(12),
         ),
-        color: isDark ? const Color(0xFF1E1E1E) : Colors.white,
       ),
 
-      // Elevated Button Theme
-      elevatedButtonTheme: ElevatedButtonThemeData(
-        style: ElevatedButton.styleFrom(
-          backgroundColor: const Color(0xFF20429C),
-          foregroundColor: Colors.white,
-          elevation: 2,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(8),
-          ),
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-        ),
-      ),
-
-      // Outlined Button Theme
-      outlinedButtonTheme: OutlinedButtonThemeData(
-        style: OutlinedButton.styleFrom(
-          foregroundColor:
-              isDark ? const Color(0xFF4A6EC5) : const Color(0xFF20429C),
-          side: BorderSide(
-            color: isDark ? const Color(0xFF4A6EC5) : const Color(0xFF20429C),
-          ),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(8),
-          ),
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-        ),
-      ),
-
-      // Text Button Theme
-      textButtonTheme: TextButtonThemeData(
-        style: TextButton.styleFrom(
-          foregroundColor:
-              isDark ? const Color(0xFF4A6EC5) : const Color(0xFF20429C),
-        ),
-      ),
-
-      // Input Decoration Theme
+      // Input decoration theme
       inputDecorationTheme: InputDecorationTheme(
         filled: true,
-        fillColor: isDark ? const Color(0xFF2C2C2C) : Colors.white,
+        fillColor: isDark ? const Color(0xFF2C2C2C) : Colors.grey[100],
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(8),
           borderSide: BorderSide(
@@ -107,36 +73,58 @@ class AppTheme {
         ),
         errorBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(8),
-          borderSide: const BorderSide(color: Colors.red, width: 1),
+          borderSide: const BorderSide(
+            color: Colors.red,
+          ),
         ),
         contentPadding:
             const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-        labelStyle: TextStyle(
-          color: isDark ? Colors.grey[400] : Colors.grey[700],
+      ),
+
+      // Elevated button theme
+      elevatedButtonTheme: ElevatedButtonThemeData(
+        style: ElevatedButton.styleFrom(
+          backgroundColor:
+              isDark ? const Color(0xFF4A6EC5) : const Color(0xFF20429C),
+          foregroundColor: Colors.white,
+          elevation: 0,
+          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(8),
+          ),
         ),
-        hintStyle: TextStyle(
-          color: isDark ? Colors.grey[500] : Colors.grey[600],
+      ),
+
+      // Outlined button theme
+      outlinedButtonTheme: OutlinedButtonThemeData(
+        style: OutlinedButton.styleFrom(
+          foregroundColor:
+              isDark ? const Color(0xFF4A6EC5) : const Color(0xFF20429C),
+          side: BorderSide(
+            color: isDark ? const Color(0xFF4A6EC5) : const Color(0xFF20429C),
+          ),
+          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(8),
+          ),
         ),
       ),
 
-      // List Tile Theme
-      listTileTheme: ListTileThemeData(
-        textColor: isDark ? Colors.white : Colors.black,
-        iconColor: isDark ? Colors.grey[400] : Colors.grey[700],
+      // Text button theme
+      textButtonTheme: TextButtonThemeData(
+        style: TextButton.styleFrom(
+          foregroundColor:
+              isDark ? const Color(0xFF4A6EC5) : const Color(0xFF20429C),
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+        ),
       ),
 
-      // Divider Theme
-      dividerTheme: DividerThemeData(
-        color: isDark ? Colors.grey[800] : Colors.grey[300],
-        thickness: 1,
-      ),
-
-      // Icon Theme
+      // Icon theme
       iconTheme: IconThemeData(
-        color: isDark ? Colors.grey[400] : Colors.grey[700],
+        color: isDark ? Colors.grey[300] : Colors.grey[700],
       ),
 
-      // Text Theme
+      // Text theme
       textTheme: TextTheme(
         headlineLarge: TextStyle(
           color: isDark ? Colors.white : Colors.black,
@@ -181,8 +169,8 @@ class AppTheme {
         indicatorColor: isDark
             ? const Color(0xFF4A6EC5).withOpacity(0.2)
             : const Color(0xFF20429C).withOpacity(0.1),
-        labelTextStyle: WidgetStateProperty.resolveWith((states) {
-          if (states.contains(WidgetState.selected)) {
+        labelTextStyle: MaterialStateProperty.resolveWith((states) {
+          if (states.contains(MaterialState.selected)) {
             return TextStyle(
               fontSize: 12,
               fontWeight: FontWeight.w600,
@@ -195,8 +183,8 @@ class AppTheme {
             color: isDark ? Colors.grey[600] : Colors.grey[700],
           );
         }),
-        iconTheme: WidgetStateProperty.resolveWith((states) {
-          if (states.contains(WidgetState.selected)) {
+        iconTheme: MaterialStateProperty.resolveWith((states) {
+          if (states.contains(MaterialState.selected)) {
             return IconThemeData(
               color: isDark ? const Color(0xFF4A6EC5) : const Color(0xFF20429C),
             );
@@ -243,6 +231,27 @@ class AppTheme {
       badgeTheme: const BadgeThemeData(
         backgroundColor: Colors.red,
         textColor: Colors.white,
+      ),
+
+      // Divider Theme
+      dividerTheme: DividerThemeData(
+        color: isDark ? Colors.grey[800] : Colors.grey[300],
+        thickness: 1,
+      ),
+
+      // List Tile Theme
+      listTileTheme: ListTileThemeData(
+        tileColor: isDark ? const Color(0xFF1E1E1E) : Colors.white,
+        iconColor: isDark ? Colors.grey[400] : Colors.grey[600],
+      ),
+
+      // Snackbar Theme
+      snackBarTheme: SnackBarThemeData(
+        backgroundColor:
+            isDark ? const Color(0xFF2C2C2C) : const Color(0xFF323232),
+        contentTextStyle: const TextStyle(color: Colors.white),
+        actionTextColor:
+            isDark ? const Color(0xFF4A6EC5) : const Color(0xFF7BA7E7),
       ),
     );
   }

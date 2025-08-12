@@ -10,10 +10,10 @@ dependencies:
   flutter:
     sdk: flutter
   
-  # Firebase Services (Complete Suite)
+  # Firebase Services - Realtime Database focused
   firebase_core: ^3.8.0
   firebase_auth: ^5.3.3
-  firebase_database: ^11.2.0
+  firebase_database: ^11.2.0  # Realtime Database instead of Firestore
   firebase_storage: ^12.3.7
   firebase_analytics: ^11.3.6
   firebase_crashlytics: ^4.2.0
@@ -25,7 +25,7 @@ dependencies:
   flutter_riverpod: ^2.4.0
   riverpod_annotation: ^2.3.0
   
-  # Local Storage
+  # Local Storage - Hive for offline support
   hive: ^2.2.3
   hive_flutter: ^1.1.0
   path_provider: ^2.1.0
@@ -61,6 +61,9 @@ dependencies:
   crypto: ^3.0.0
   collection: ^1.17.0
   json_annotation: ^4.8.1
+  
+  # Email
+  mailer: ^6.0.1
   
   # Platform specific
   flutter_local_notifications: ^16.0.0

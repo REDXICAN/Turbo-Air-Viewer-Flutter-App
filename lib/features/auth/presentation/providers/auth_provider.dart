@@ -1,9 +1,9 @@
 // lib/features/auth/presentation/providers/auth_provider.dart
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_database/firebase_database.dart';
 import '../../../../core/services/firebase_auth_service.dart';
-import '../../../../core/services/firestore_service.dart';
+import '../../../../core/services/realtime_database_service.dart';
 import '../../../../core/models/models.dart';
 
 // Auth Service Provider
@@ -11,9 +11,9 @@ final authServiceProvider = Provider<FirebaseAuthService>((ref) {
   return FirebaseAuthService();
 });
 
-// Firestore Service Provider
-final firestoreServiceProvider = Provider<FirestoreService>((ref) {
-  return FirestoreService();
+// Realtime Database Service Provider
+final databaseServiceProvider = Provider<RealtimeDatabaseService>((ref) {
+  return RealtimeDatabaseService();
 });
 
 // Auth State Provider
@@ -32,8 +32,8 @@ final currentUserProfileProvider = FutureProvider<UserProfile?>((ref) async {
   final user = ref.watch(authStateProvider).valueOrNull;
   if (user == null) return null;
 
-  final authService = ref.watch(authServiceProvider);
-  final profileData = await authService.getUserProfile(user.uid);
+  final dbService = ref.watch(databaseServiceProvider);
+  final profileData = await dbService.getUserProfile(user.uid);
 
   if (profileData == null) return null;
 
@@ -45,45 +45,26 @@ final cartItemCountProvider = StreamProvider<int>((ref) {
   final user = ref.watch(authStateProvider).valueOrNull;
   if (user == null) return Stream.value(0);
 
-  return FirebaseFirestore.instance
-      .collection('cart_items')
-      .where('user_id', isEqualTo: user.uid)
-      .snapshots()
-      .map((snapshot) => snapshot.docs.length);
+  final dbService = ref.watch(databaseServiceProvider);
+  return dbService.getCartItems().map((items) => items.length);
 });
 
 // Total Clients Provider
 final totalClientsProvider = FutureProvider<int>((ref) async {
-  final user = ref.watch(authStateProvider).valueOrNull;
-  if (user == null) return 0;
-
-  final snapshot = await FirebaseFirestore.instance
-      .collection('clients')
-      .where('user_id', isEqualTo: user.uid)
-      .get();
-
-  return snapshot.docs.length;
+  final dbService = ref.watch(databaseServiceProvider);
+  return await dbService.getTotalClients();
 });
 
 // Total Quotes Provider
 final totalQuotesProvider = FutureProvider<int>((ref) async {
-  final user = ref.watch(authStateProvider).valueOrNull;
-  if (user == null) return 0;
-
-  final snapshot = await FirebaseFirestore.instance
-      .collection('quotes')
-      .where('user_id', isEqualTo: user.uid)
-      .get();
-
-  return snapshot.docs.length;
+  final dbService = ref.watch(databaseServiceProvider);
+  return await dbService.getTotalQuotes();
 });
 
 // Total Products Provider
 final totalProductsProvider = FutureProvider<int>((ref) async {
-  final snapshot =
-      await FirebaseFirestore.instance.collection('products').get();
-
-  return snapshot.docs.length;
+  final dbService = ref.watch(databaseServiceProvider);
+  return await dbService.getTotalProducts();
 });
 
 // Recent Quotes Provider
@@ -91,16 +72,32 @@ final recentQuotesProvider = StreamProvider<List<Quote>>((ref) {
   final user = ref.watch(authStateProvider).valueOrNull;
   if (user == null) return Stream.value([]);
 
-  return FirebaseFirestore.instance
-      .collection('quotes')
-      .where('user_id', isEqualTo: user.uid)
-      .orderBy('created_at', descending: true)
-      .limit(10)
-      .snapshots()
-      .map((snapshot) => snapshot.docs
-          .map((doc) => Quote.fromJson({...doc.data(), 'id': doc.id}))
-          .toList());
+  final dbService = ref.watch(databaseServiceProvider);
+  return dbService.getQuotes().map((quotesList) {
+    // Convert to Quote models and limit to 10
+    final quotes =
+        quotesList.map((json) => Quote.fromJson(json)).take(10).toList();
+    return quotes;
+  });
 });
+
+// Theme Mode Provider
+final themeModeProvider =
+    StateNotifierProvider<ThemeModeNotifier, ThemeMode>((ref) {
+  return ThemeModeNotifier();
+});
+
+class ThemeModeNotifier extends StateNotifier<ThemeMode> {
+  ThemeModeNotifier() : super(ThemeMode.system);
+
+  void setThemeMode(ThemeMode mode) {
+    state = mode;
+  }
+
+  void toggleDarkMode(bool isDark) {
+    state = isDark ? ThemeMode.dark : ThemeMode.light;
+  }
+}
 
 // Sign In Method Provider
 final signInProvider = Provider((ref) {
@@ -135,14 +132,25 @@ final signInProvider = Provider((ref) {
 // Sign Up Method Provider
 final signUpProvider = Provider((ref) {
   final authService = ref.watch(authServiceProvider);
+  final dbService = ref.watch(databaseServiceProvider);
 
   return (String email, String password, String name) async {
     try {
-      await authService.createUserWithEmailAndPassword(
+      final user = await authService.createUserWithEmailAndPassword(
         email: email,
         password: password,
         name: name,
       );
+
+      if (user != null) {
+        // Create user profile in Realtime Database
+        await dbService.createUserProfile(
+          uid: user.uid,
+          email: email,
+          name: name,
+        );
+      }
+
       return null; // Success
     } on FirebaseAuthException catch (e) {
       switch (e.code) {
@@ -200,15 +208,17 @@ final resetPasswordProvider = Provider((ref) {
 // Update Profile Method Provider
 final updateProfileProvider = Provider((ref) {
   final authService = ref.watch(authServiceProvider);
+  final dbService = ref.watch(databaseServiceProvider);
   final user = ref.watch(currentUserProvider);
 
   return (String name) async {
     try {
       if (user == null) return 'No user signed in';
 
-      await authService.updateUserProfile(
-        uid: user.uid,
-        data: {'name': name},
+      // Update in Realtime Database
+      await dbService.updateUserProfile(
+        user.uid,
+        {'name': name},
       );
 
       // Update Firebase Auth display name
@@ -249,43 +259,7 @@ final changePasswordProvider = Provider((ref) {
         case 'weak-password':
           return 'New password is too weak';
         default:
-          return e.message ?? 'Failed to change password';
-      }
-    } catch (e) {
-      return 'An unexpected error occurred';
-    }
-  };
-});
-
-// Delete Account Method Provider
-final deleteAccountProvider = Provider((ref) {
-  final authService = ref.watch(authServiceProvider);
-  final user = ref.watch(currentUserProvider);
-
-  return (String password) async {
-    try {
-      if (user == null || user.email == null) {
-        return 'No user signed in';
-      }
-
-      // Re-authenticate user
-      await authService.reauthenticateUser(
-        email: user.email!,
-        password: password,
-      );
-
-      // Delete account
-      await authService.deleteAccount();
-
-      return null; // Success
-    } on FirebaseAuthException catch (e) {
-      switch (e.code) {
-        case 'wrong-password':
-          return 'Password is incorrect';
-        case 'requires-recent-login':
-          return 'Please sign in again before deleting your account';
-        default:
-          return e.message ?? 'Failed to delete account';
+          return e.message ?? 'An error occurred changing password';
       }
     } catch (e) {
       return 'An unexpected error occurred';

@@ -1,96 +1,128 @@
 // lib/core/router/app_router.dart
 import 'package:flutter/material.dart';
-import 'package:go_router/go_router.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
+import '../../features/auth/presentation/providers/auth_provider.dart';
 import '../../features/auth/presentation/screens/login_screen.dart';
+import '../../features/auth/presentation/screens/register_screen.dart';
+import '../../features/auth/presentation/screens/forgot_password_screen.dart';
 import '../../features/home/home_screen.dart';
-import '../../features/products/presentation/products_screen.dart';
+import '../../features/products/presentation/screens/products_screen.dart';
+import '../../features/products/presentation/screens/product_detail_screen.dart';
+import '../../features/clients/presentation/screens/clients_screen.dart';
+import '../../features/cart/presentation/screens/cart_screen.dart';
+import '../../features/quotes/presentation/screens/quotes_screen.dart';
+import '../../features/quotes/presentation/screens/quote_detail_screen.dart';
+import '../../features/quotes/presentation/screens/create_quote_screen.dart';
 import '../../features/profile/presentation/screens/profile_screen.dart';
 import '../../features/admin/presentation/screens/admin_panel_screen.dart';
-import '../../features/cart/presentation/screens/cart_screen.dart';
-import '../../features/clients/presentation/screens/clients_screen.dart';
-import '../../features/quotes/presentation/screens/quotes_screen.dart';
-import '../../features/auth/presentation/providers/auth_provider.dart';
 
-// Static router instance for app.dart
-class AppRouter {
-  static late GoRouter router;
-
-  static void initialize(Ref ref) {
-    final authState = ref.watch(authStateProvider);
-
-    router = GoRouter(
-      initialLocation: '/login',
-      redirect: (context, state) {
-        final isLoggedIn = authState.valueOrNull != null;
-        final isLoggingIn = state.matchedLocation == '/login';
-
-        if (!isLoggedIn && !isLoggingIn) {
-          return '/login';
-        }
-
-        if (isLoggedIn && isLoggingIn) {
-          return '/';
-        }
-
-        return null;
-      },
-      routes: [
-        GoRoute(
-          path: '/login',
-          builder: (context, state) => const LoginScreen(),
-        ),
-        ShellRoute(
-          builder: (context, state, child) {
-            return MainNavigationShell(child: child);
-          },
-          routes: [
-            GoRoute(
-              path: '/',
-              builder: (context, state) => const HomeScreen(),
-            ),
-            GoRoute(
-              path: '/products',
-              builder: (context, state) => const ProductsScreen(),
-            ),
-            GoRoute(
-              path: '/cart',
-              builder: (context, state) => const CartScreen(),
-            ),
-            GoRoute(
-              path: '/clients',
-              builder: (context, state) => const ClientsScreen(),
-            ),
-            GoRoute(
-              path: '/quotes',
-              builder: (context, state) => const QuotesScreen(),
-            ),
-            GoRoute(
-              path: '/profile',
-              builder: (context, state) => const ProfileScreen(),
-            ),
-            GoRoute(
-              path: '/admin',
-              builder: (context, state) => const AdminPanelScreen(),
-            ),
-          ],
-        ),
-      ],
-    );
-  }
-}
-
-// Provider to initialize router
+// Router provider
 final routerProvider = Provider<GoRouter>((ref) {
-  AppRouter.initialize(ref);
-  return AppRouter.router;
-});
+  final authState = ref.watch(authStateProvider);
 
-// Cart item count provider
-final cartItemCountProvider = StreamProvider<int>((ref) async* {
-  // This should be implemented with your actual cart service
-  // For now, returning a default stream
-  yield 0;
+  return GoRouter(
+    initialLocation: '/',
+    redirect: (context, state) {
+      final isAuthenticated = authState.valueOrNull != null;
+      final isAuthRoute = state.uri.path.startsWith('/auth');
+
+      if (!isAuthenticated && !isAuthRoute) {
+        return '/auth/login';
+      }
+
+      if (isAuthenticated && isAuthRoute) {
+        return '/';
+      }
+
+      return null;
+    },
+    routes: [
+      // Auth routes
+      GoRoute(
+        path: '/auth/login',
+        builder: (context, state) => const LoginScreen(),
+      ),
+      GoRoute(
+        path: '/auth/register',
+        builder: (context, state) => const RegisterScreen(),
+      ),
+      GoRoute(
+        path: '/auth/forgot-password',
+        builder: (context, state) => const ForgotPasswordScreen(),
+      ),
+
+      // Main app shell
+      ShellRoute(
+        builder: (context, state, child) => MainNavigationShell(child: child),
+        routes: [
+          // Home
+          GoRoute(
+            path: '/',
+            builder: (context, state) => const HomeScreen(),
+          ),
+
+          // Products
+          GoRoute(
+            path: '/products',
+            builder: (context, state) => const ProductsScreen(),
+            routes: [
+              GoRoute(
+                path: ':productId',
+                builder: (context, state) {
+                  final productId = state.pathParameters['productId']!;
+                  return ProductDetailScreen(productId: productId);
+                },
+              ),
+            ],
+          ),
+
+          // Cart
+          GoRoute(
+            path: '/cart',
+            builder: (context, state) => const CartScreen(),
+          ),
+
+          // Clients
+          GoRoute(
+            path: '/clients',
+            builder: (context, state) => const ClientsScreen(),
+          ),
+
+          // Quotes
+          GoRoute(
+            path: '/quotes',
+            builder: (context, state) => const QuotesScreen(),
+            routes: [
+              GoRoute(
+                path: 'create',
+                builder: (context, state) => const CreateQuoteScreen(),
+              ),
+              GoRoute(
+                path: ':quoteId',
+                builder: (context, state) {
+                  final quoteId = state.pathParameters['quoteId']!;
+                  return QuoteDetailScreen(quoteId: quoteId);
+                },
+              ),
+            ],
+          ),
+
+          // Profile
+          GoRoute(
+            path: '/profile',
+            builder: (context, state) => const ProfileScreen(),
+          ),
+
+          // Admin
+          GoRoute(
+            path: '/admin',
+            builder: (context, state) => const AdminPanelScreen(),
+          ),
+        ],
+      ),
+    ],
+  );
 });
 
 // Main Navigation Shell with Bottom Navigation Bar
@@ -118,27 +150,23 @@ class _MainNavigationShellState extends ConsumerState<MainNavigationShell> {
   ];
 
   int _calculateSelectedIndex(String location) {
-    // Handle root path
     if (location == '/') return 0;
 
-    // Find matching route
     for (int i = 0; i < _routes.length; i++) {
       if (location.startsWith(_routes[i]) && _routes[i] != '/') {
         return i;
       }
     }
 
-    // Check for admin route
     if (location.startsWith('/admin')) {
-      return _routes.length; // Admin is always last
+      return _routes.length;
     }
 
-    return 0; // Default to home
+    return 0;
   }
 
   @override
   Widget build(BuildContext context) {
-    // Get the current user profile to check admin status
     final currentUserProfileAsync = ref.watch(currentUserProfileProvider);
     final isAdmin = currentUserProfileAsync.when(
       data: (profile) => profile?.isAdmin ?? false,
@@ -146,10 +174,7 @@ class _MainNavigationShellState extends ConsumerState<MainNavigationShell> {
       error: (_, __) => false,
     );
 
-    // Get current location for navigation
     final currentLocation = GoRouterState.of(context).uri.toString();
-
-    // Watch cart item count
     final cartItemCountAsync = ref.watch(cartItemCountProvider);
     final cartItemCount = cartItemCountAsync.when(
       data: (count) => count,
@@ -157,9 +182,7 @@ class _MainNavigationShellState extends ConsumerState<MainNavigationShell> {
       error: (_, __) => 0,
     );
 
-    // Update routes if admin
     final routes = isAdmin ? [..._routes, '/admin'] : _routes;
-
     final selectedIndex = _calculateSelectedIndex(currentLocation);
 
     return Scaffold(

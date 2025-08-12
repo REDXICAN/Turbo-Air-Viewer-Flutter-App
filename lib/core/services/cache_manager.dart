@@ -1,242 +1,229 @@
 // lib/core/services/cache_manager.dart
-import 'dart:async';
-import 'package:flutter/foundation.dart' show kDebugMode;
-import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:shared_preferences/shared_preferences.dart';
+import 'package:firebase_database/firebase_database.dart';
+import 'package:hive_flutter/hive_flutter.dart';
+import 'dart:convert';
 
 class CacheManager {
-  static final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+  static const String _cacheBox = 'app_cache';
+  static const String _metadataBox = 'cache_metadata';
+  static const Duration _defaultExpiration = Duration(hours: 24);
 
-  // Cache configuration
-  static const Map<CacheType, Duration> cacheDurations = {
-    CacheType.active: Duration(days: 7),
-    CacheType.reference: Duration(days: 30),
-  };
+  static late Box _cache;
+  static late Box _metadata;
 
-  static const Map<String, CacheType> collectionTypes = {
-    'quotes': CacheType.active,
-    'cart_items': CacheType.active,
-    'clients': CacheType.active,
-    'products': CacheType.reference,
-    'categories': CacheType.reference,
-    'settings': CacheType.reference,
-  };
+  // Initialize cache boxes
+  static Future<void> initialize() async {
+    _cache = await Hive.openBox(_cacheBox);
+    _metadata = await Hive.openBox(_metadataBox);
+  }
 
-  /// Mark document as cached with appropriate expiration
-  static Future<void> markAsCached(
-    String collection,
-    String documentId,
-  ) async {
-    final cacheType = collectionTypes[collection] ?? CacheType.active;
-    final expirationDate = DateTime.now().add(cacheDurations[cacheType]!);
+  // Cache a value with expiration
+  static Future<void> cacheValue({
+    required String key,
+    required dynamic value,
+    Duration expiration = _defaultExpiration,
+  }) async {
+    final expirationTime = DateTime.now().add(expiration).toIso8601String();
 
-    await _firestore.collection(collection).doc(documentId).update({
-      'cached_at': FieldValue.serverTimestamp(),
-      'cache_expires_at': Timestamp.fromDate(expirationDate),
-      'cache_type': cacheType.toString(),
+    // Store the value
+    await _cache.put(key, jsonEncode(value));
+
+    // Store metadata
+    await _metadata.put(key, {
+      'expiration': expirationTime,
+      'cached_at': DateTime.now().toIso8601String(),
     });
   }
 
-  /// Check if a document is still within cache validity
-  static Future<bool> isCacheValid(
-    String collection,
-    String documentId,
-  ) async {
-    try {
-      final doc = await _firestore
-          .collection(collection)
-          .doc(documentId)
-          .get(const GetOptions(source: Source.cache));
+  // Get cached value if not expired
+  static dynamic getCachedValue(String key) {
+    final metadata = _metadata.get(key);
 
-      if (!doc.exists) return false;
+    if (metadata == null) return null;
 
-      final data = doc.data();
-      if (data == null) return false;
+    final expiration = DateTime.parse(metadata['expiration']);
 
-      final expiresAt = data['cache_expires_at'] as Timestamp?;
-      if (expiresAt == null) return false;
-
-      return expiresAt.toDate().isAfter(DateTime.now());
-    } catch (e) {
-      return false;
+    if (DateTime.now().isAfter(expiration)) {
+      // Cache expired, remove it
+      _cache.delete(key);
+      _metadata.delete(key);
+      return null;
     }
+
+    final cachedValue = _cache.get(key);
+    if (cachedValue != null) {
+      return jsonDecode(cachedValue);
+    }
+
+    return null;
   }
 
-  /// Refresh cache for a collection
-  static Future<void> refreshCollection(
-    String collection, {
-    String? userId,
-    Map<String, dynamic>? queryFilters,
-  }) async {
-    Query query = _firestore.collection(collection);
+  // Check if cache exists and is valid
+  static bool isCached(String key) {
+    final metadata = _metadata.get(key);
 
-    if (userId != null) {
-      query = query.where('user_id', isEqualTo: userId);
-    }
+    if (metadata == null) return false;
 
-    if (queryFilters != null) {
-      queryFilters.forEach((field, value) {
-        query = query.where(field, isEqualTo: value);
-      });
-    }
-
-    final snapshot = await query.get(const GetOptions(source: Source.server));
-    final cacheType = collectionTypes[collection] ?? CacheType.active;
-    final expirationDate = DateTime.now().add(cacheDurations[cacheType]!);
-
-    final batch = _firestore.batch();
-    for (final doc in snapshot.docs) {
-      batch.update(doc.reference, {
-        'cached_at': FieldValue.serverTimestamp(),
-        'cache_expires_at': Timestamp.fromDate(expirationDate),
-        'cache_type': cacheType.toString(),
-      });
-    }
-
-    await batch.commit();
-
-    // Update cache metadata
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setString(
-      'cache_refresh_$collection',
-      DateTime.now().toIso8601String(),
-    );
+    final expiration = DateTime.parse(metadata['expiration']);
+    return DateTime.now().isBefore(expiration);
   }
 
-  /// Get cache statistics for a collection
-  static Future<CacheStats> getCollectionCacheStats(String collection) async {
-    final prefs = await SharedPreferences.getInstance();
-    final lastRefresh = prefs.getString('cache_refresh_$collection');
-
-    // Count cached documents
-    final cachedDocs = await _firestore
-        .collection(collection)
-        .where('cached_at', isNotEqualTo: null)
-        .count()
-        .get();
-
-    // Count expired documents
-    final expiredDocs = await _firestore
-        .collection(collection)
-        .where('cache_expires_at', isLessThan: Timestamp.now())
-        .count()
-        .get();
-
-    return CacheStats(
-      collection: collection,
-      cachedCount: cachedDocs.count ?? 0,
-      expiredCount: expiredDocs.count ?? 0,
-      lastRefresh: lastRefresh != null ? DateTime.parse(lastRefresh) : null,
-      cacheType: collectionTypes[collection] ?? CacheType.active,
-      maxAge: cacheDurations[collectionTypes[collection] ?? CacheType.active]!,
-    );
+  // Clear specific cache
+  static Future<void> clearCache(String key) async {
+    await _cache.delete(key);
+    await _metadata.delete(key);
   }
 
-  /// Clear expired cache entries
-  static Future<int> clearExpiredCache() async {
-    int clearedCount = 0;
-
-    for (final collection in collectionTypes.keys) {
-      try {
-        final expiredDocs = await _firestore
-            .collection(collection)
-            .where('cache_expires_at', isLessThan: Timestamp.now())
-            .get();
-
-        for (final doc in expiredDocs.docs) {
-          await doc.reference.delete();
-          clearedCount++;
-        }
-      } catch (e) {
-        // Use kDebugMode to conditionally print in debug mode only
-        if (kDebugMode) {
-          print('Error clearing expired cache for $collection: $e');
-        }
-      }
-    }
-
-    return clearedCount;
-  }
-
-  /// Force clear all cache
+  // Clear all cache
   static Future<void> clearAllCache() async {
-    await _firestore.clearPersistence();
-
-    final prefs = await SharedPreferences.getInstance();
-    final keys = prefs.getKeys().where((key) => key.startsWith('cache_'));
-    for (final key in keys) {
-      await prefs.remove(key);
-    }
+    await _cache.clear();
+    await _metadata.clear();
   }
 
-  /// Preload critical data for offline use
-  static Future<void> preloadCriticalData(String userId) async {
-    // Preload active data collections
-    for (final collection in collectionTypes.entries
-        .where((e) => e.value == CacheType.active)
-        .map((e) => e.key)) {
-      await refreshCollection(collection, userId: userId);
-    }
+  // Get cache size
+  static int getCacheSize() {
+    int size = 0;
 
-    // Preload reference data (less frequently updated)
-    for (final collection in collectionTypes.entries
-        .where((e) => e.value == CacheType.reference)
-        .map((e) => e.key)) {
-      // Check if reference data needs refresh (older than 7 days)
-      final prefs = await SharedPreferences.getInstance();
-      final lastRefresh = prefs.getString('cache_refresh_$collection');
-
-      if (lastRefresh == null ||
-          DateTime.parse(lastRefresh)
-              .isBefore(DateTime.now().subtract(const Duration(days: 7)))) {
-        await refreshCollection(collection);
+    for (var key in _cache.keys) {
+      final value = _cache.get(key);
+      if (value != null) {
+        size += value.toString().length;
       }
     }
-  }
-}
 
-/// Cache type enumeration
-enum CacheType {
-  active, // 7 days cache
-  reference, // 30 days cache
-}
-
-/// Cache statistics model
-class CacheStats {
-  final String collection;
-  final int cachedCount;
-  final int expiredCount;
-  final DateTime? lastRefresh;
-  final CacheType cacheType;
-  final Duration maxAge;
-
-  CacheStats({
-    required this.collection,
-    required this.cachedCount,
-    required this.expiredCount,
-    this.lastRefresh,
-    required this.cacheType,
-    required this.maxAge,
-  });
-
-  int get validCount => cachedCount - expiredCount;
-
-  double get cacheHealthPercentage {
-    if (cachedCount == 0) return 0;
-    return (validCount / cachedCount) * 100;
+    return size;
   }
 
-  bool get needsRefresh {
-    if (lastRefresh == null) return true;
+  // Clean expired cache entries
+  static Future<void> cleanExpiredCache() async {
+    final keysToRemove = <String>[];
 
-    // Active data needs refresh after 1 day
-    if (cacheType == CacheType.active) {
-      return lastRefresh!
-          .isBefore(DateTime.now().subtract(const Duration(days: 1)));
+    for (var key in _metadata.keys) {
+      final metadata = _metadata.get(key);
+      if (metadata != null) {
+        final expiration = DateTime.parse(metadata['expiration']);
+        if (DateTime.now().isAfter(expiration)) {
+          keysToRemove.add(key as String);
+        }
+      }
     }
 
-    // Reference data needs refresh after 7 days
-    return lastRefresh!
-        .isBefore(DateTime.now().subtract(const Duration(days: 7)));
+    for (var key in keysToRemove) {
+      await _cache.delete(key);
+      await _metadata.delete(key);
+    }
+  }
+
+  // Preload critical data for offline use
+  static Future<void> preloadCriticalData(String userId) async {
+    try {
+      final database = FirebaseDatabase.instance;
+
+      // Preload products
+      final productsSnapshot = await database.ref('products').once();
+      if (productsSnapshot.snapshot.value != null) {
+        await cacheValue(
+          key: 'products_all',
+          value: productsSnapshot.snapshot.value,
+          expiration: const Duration(days: 7), // Products don't change often
+        );
+      }
+
+      // Preload user's clients
+      final clientsSnapshot = await database
+          .ref('clients')
+          .orderByChild('user_id')
+          .equalTo(userId)
+          .once();
+
+      if (clientsSnapshot.snapshot.value != null) {
+        await cacheValue(
+          key: 'clients_$userId',
+          value: clientsSnapshot.snapshot.value,
+          expiration: const Duration(days: 1),
+        );
+      }
+
+      // Preload user's quotes
+      final quotesSnapshot = await database
+          .ref('quotes')
+          .orderByChild('user_id')
+          .equalTo(userId)
+          .once();
+
+      if (quotesSnapshot.snapshot.value != null) {
+        await cacheValue(
+          key: 'quotes_$userId',
+          value: quotesSnapshot.snapshot.value,
+          expiration: const Duration(hours: 6),
+        );
+      }
+
+      // Preload user's cart
+      final cartSnapshot = await database
+          .ref('cart_items')
+          .orderByChild('user_id')
+          .equalTo(userId)
+          .once();
+
+      if (cartSnapshot.snapshot.value != null) {
+        await cacheValue(
+          key: 'cart_$userId',
+          value: cartSnapshot.snapshot.value,
+          expiration: const Duration(hours: 1),
+        );
+      }
+
+      // Preload user profile
+      final profileSnapshot =
+          await database.ref('user_profiles/$userId').once();
+
+      if (profileSnapshot.snapshot.value != null) {
+        await cacheValue(
+          key: 'profile_$userId',
+          value: profileSnapshot.snapshot.value,
+          expiration: const Duration(days: 1),
+        );
+      }
+    } catch (e) {
+      print('Error preloading critical data: $e');
+    }
+  }
+
+  // Get cached data with fallback to database
+  static Future<dynamic> getWithFallback({
+    required String cacheKey,
+    required Future<dynamic> Function() fetchFunction,
+    Duration expiration = _defaultExpiration,
+  }) async {
+    // Try to get from cache first
+    final cachedData = getCachedValue(cacheKey);
+    if (cachedData != null) {
+      return cachedData;
+    }
+
+    // Fetch from database
+    try {
+      final data = await fetchFunction();
+
+      // Cache the result
+      if (data != null) {
+        await cacheValue(
+          key: cacheKey,
+          value: data,
+          expiration: expiration,
+        );
+      }
+
+      return data;
+    } catch (e) {
+      // If fetch fails, try to return expired cache if available
+      final expiredCache = _cache.get(cacheKey);
+      if (expiredCache != null) {
+        return jsonDecode(expiredCache);
+      }
+
+      rethrow;
+    }
   }
 }
