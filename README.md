@@ -1,72 +1,122 @@
-# Turbo Air Equipment Viewer - Flutter Version
+# Turbo Air Equipment Viewer - Flutter Application
 
-A cross-platform B2B equipment catalog and quote management system built with Flutter, Supabase, and deployed on Vercel.
+A cross-platform B2B equipment catalog and quote management system built with Flutter and Firebase, featuring offline-first architecture and real-time synchronization.
 
-## Features
+## 🚀 Features
 
-- 🌐 **Multi-Platform Support**: iOS, Android, macOS, Windows, and Web
-- 📱 **Offline-First Architecture**: Full functionality without internet connection
-- 🔐 **Secure Authentication**: Supabase Auth with role-based access control
-- 📧 **Email Integration**: Professional quote emails via Supabase Edge Functions
-- 📊 **Quote Management**: Create, edit, and export quotes as PDF/Excel
-- 🔍 **Advanced Search**: Real-time product search with category filtering
-- 👥 **Client Management**: Manage clients and their quotes
-- 🛒 **Shopping Cart**: Persistent cart with automatic sync
-- 📈 **Analytics Dashboard**: Track quotes, clients, and sales metrics
+- **Multi-Platform Support**: iOS, Android, Web, Windows, macOS
+- **Offline-First Architecture**: Full functionality without internet
+- **Secure Authentication**: Firebase Auth with role-based access (Admin, Sales, Distributor)
+- **Real-time Database**: Firebase Realtime Database with automatic sync
+- **Quote Management**: Create, edit, and export quotes as PDF/Excel
+- **Email Integration**: Professional quote emails via Gmail SMTP
+- **Excel Import**: Super admin can bulk import products via Excel
+- **Advanced Search**: Real-time product search with category filtering
+- **Client Management**: Complete CRM for managing clients and quotes
+- **Persistent Cart**: Shopping cart syncs across devices
 
-## Tech Stack
+## 🛠️ Tech Stack
 
 ### Frontend
 - **Flutter 3.x**: Cross-platform UI framework
-- **Riverpod**: State management
-- **Hive**: Local storage for offline support
-- **Dio**: HTTP client with interceptors
+- **Riverpod**: State management solution
+- **Hive**: Local database for offline support
+- **Go Router**: Navigation and routing
 
-### Backend
-- **Supabase**: PostgreSQL database with real-time subscriptions
-- **Supabase Auth**: Authentication and authorization
-- **Supabase Edge Functions**: Serverless functions for email and processing
-- **Supabase Storage**: Product images and documents
+### Backend Services
+- **Firebase Realtime Database**: NoSQL cloud database with real-time sync
+- **Firebase Authentication**: Secure user authentication
+- **Firebase Storage**: Product images and documents
+- **Gmail SMTP**: Email service for quotes
 
 ### Deployment
-- **Vercel**: Web deployment with edge functions
-- **GitHub Actions**: CI/CD pipeline
-- **App Store / Google Play**: Mobile distribution
+- **Vercel**: Web deployment platform
+- **GitHub Actions**: CI/CD pipeline (optional)
 
-## Architecture
-
-### Offline-First Strategy
-
-The app uses a sophisticated offline-first architecture:
-
-1. **Local Storage (Hive)**: All data is cached locally using Hive boxes
-2. **Sync Queue**: Offline changes are queued and synced when online
-3. **Conflict Resolution**: Last-write-wins with timestamp tracking
-4. **Real-time Updates**: When online, uses Supabase real-time subscriptions
-
-### Data Flow
+## 📁 Project Structure
 
 ```
-User Action → Local Storage → Sync Queue → Supabase
-                    ↓              ↓
-              Immediate UI    Background Sync
+lib/
+├── main.dart                         # App entry point with Firebase init
+├── app.dart                          # Main application widget
+├── firebase_options.dart             # Firebase configuration (git-ignored)
+├── core/
+│   ├── config/
+│   │   ├── env_config.dart          # Environment variables access
+│   │   └── secure_email_config.dart # Secure email configuration
+│   ├── theme/
+│   │   └── app_theme.dart           # Material theme definitions
+│   ├── router/
+│   │   └── app_router.dart          # Navigation configuration
+│   ├── services/
+│   │   ├── realtime_database_service.dart  # Database operations
+│   │   ├── offline_service.dart            # Offline data management
+│   │   ├── firebase_auth_service.dart      # Auth wrapper
+│   │   ├── email_service.dart              # Email functionality
+│   │   ├── export_service.dart             # PDF/Excel export
+│   │   ├── excel_upload_service.dart       # Excel import for admin
+│   │   └── logging_service.dart            # Centralized logging
+│   └── widgets/
+│       └── offline_status_widget.dart      # Connection indicator
+├── features/
+│   ├── auth/                        # Login/Register screens
+│   ├── products/                    # Product catalog & details
+│   ├── clients/                     # Client management
+│   ├── cart/                        # Shopping cart
+│   ├── quotes/                      # Quote creation & management
+│   ├── admin/                       # Admin panel
+│   └── profile/                     # User profile
+└── assets/
+    └── screenshots/                  # Product images by SKU
 ```
 
-## Setup Instructions
+## 🔐 Security Configuration
+
+### Environment Variables
+Create a `.env` file in the project root (never commit this):
+
+```env
+# Admin Credentials
+ADMIN_EMAIL=andres@turboairmexico.com
+ADMIN_PASSWORD=your_secure_password
+
+# Firebase Configuration
+FIREBASE_PROJECT_ID=turbo-air-viewer
+FIREBASE_DATABASE_URL=https://turbo-air-viewer-default-rtdb.firebaseio.com
+FIREBASE_API_KEY_WEB=your_web_api_key
+FIREBASE_AUTH_DOMAIN=turbo-air-viewer.firebaseapp.com
+FIREBASE_STORAGE_BUCKET=turbo-air-viewer.appspot.com
+FIREBASE_MESSAGING_SENDER_ID=your_sender_id
+FIREBASE_APP_ID_WEB=your_web_app_id
+
+# Email Service
+EMAIL_SENDER_ADDRESS=turboairquotes@gmail.com
+EMAIL_APP_PASSWORD=your_app_specific_password
+SMTP_HOST=smtp.gmail.com
+SMTP_PORT=587
+```
+
+### Security Features
+- All sensitive data in environment variables
+- Comprehensive `.gitignore` preventing credential leaks
+- Firebase security rules for data access control
+- Role-based permissions (Admin, Sales, Distributor)
+- Secure email configuration with app-specific passwords
+
+## 🚀 Setup Instructions
 
 ### Prerequisites
-
-1. Flutter SDK (3.0 or later)
-2. Dart SDK
-3. Supabase account
-4. Vercel account (for web deployment)
+- Flutter SDK 3.0+
+- Firebase CLI
+- Node.js (for Vercel deployment)
+- Git
 
 ### Local Development
 
 1. **Clone the repository**
 ```bash
-git clone https://github.com/yourusername/turbo-air-flutter.git
-cd turbo-air-flutter
+git clone https://github.com/REDXICAN/Turbo-Air-Viewer-Flutter-App.git
+cd Turbo-Air-Viewer-Flutter-App
 ```
 
 2. **Install dependencies**
@@ -74,341 +124,181 @@ cd turbo-air-flutter
 flutter pub get
 ```
 
-3. **Set up Supabase**
-   - Create a new Supabase project
-   - Run the SQL migrations from `supabase/migrations/`
-   - Copy your Supabase URL and anon key
+3. **Set up environment variables**
+- Copy `.env.example` to `.env`
+- Fill in your Firebase and email credentials
 
-4. **Configure environment**
-   - Update `lib/core/config/app_config.dart` with your Supabase credentials
-
-5. **Run the app**
+4. **Run the application**
 ```bash
-# For web
+# Web
 flutter run -d chrome
 
-# For iOS (requires macOS)
+# iOS
 flutter run -d ios
 
-# For Android
+# Android
 flutter run -d android
 
-# For desktop
-flutter run -d macos  # or windows/linux
+# Windows
+flutter run -d windows
+
+# Or use the PowerShell script
+./run_local.ps1
 ```
 
-### Supabase Setup
+## 🌐 Deployment
 
-1. **Create tables** - Run the following SQL in Supabase SQL editor:
+### Vercel Deployment (Web)
 
-```sql
--- Products table
-CREATE TABLE products (
-    id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
-    sku TEXT UNIQUE NOT NULL,
-    category TEXT,
-    subcategory TEXT,
-    product_type TEXT,
-    description TEXT,
-    price DECIMAL(10,2),
-    -- ... other fields from schema
-);
-
--- Enable RLS
-ALTER TABLE products ENABLE ROW LEVEL SECURITY;
-
--- Create policies
-CREATE POLICY "Products are viewable by everyone" 
-ON products FOR SELECT 
-USING (true);
-
--- Repeat for other tables (clients, quotes, cart_items, etc.)
-```
-
-2. **Deploy Edge Functions**
+1. **Push to GitHub**
 ```bash
-supabase functions deploy send-email
-supabase functions deploy sync-data
+git add .
+git commit -m "Ready for deployment"
+git push origin main
 ```
 
-3. **Set up Storage buckets**
+2. **Deploy on Vercel**
+- Go to https://vercel.com/new
+- Import your GitHub repository
+- Vercel will auto-detect Flutter configuration
+- Add environment variables in Vercel dashboard
+- Deploy!
+
+### Build Commands
+
+**Web**
 ```bash
-supabase storage create product-images
-supabase storage create quote-documents
+flutter build web --release
 ```
 
-### Vercel Deployment
-
-1. **Connect GitHub repository to Vercel**
-
-2. **Configure build settings**:
-   - Framework Preset: Other
-   - Build Command: `flutter build web --release`
-   - Output Directory: `build/web`
-
-3. **Set environment variables** in Vercel dashboard:
-   - `SUPABASE_URL`
-   - `SUPABASE_ANON_KEY`
-
-4. **Deploy**
-```bash
-vercel --prod
-```
-
-## Project Structure
-
-```
-lib/
-├── main.dart                 # App entry point
-├── app.dart                  # Main app widget
-├── core/
-│   ├── config/              # App configuration
-│   ├── theme/               # Theme definitions
-│   ├── router/              # Navigation
-│   ├── services/            # Core services
-│   └── widgets/             # Shared widgets
-├── features/
-│   ├── auth/                # Authentication
-│   ├── products/            # Product catalog
-│   ├── clients/             # Client management
-│   ├── cart/                # Shopping cart
-│   ├── quotes/              # Quote management
-│   └── profile/             # User profile
-└── shared/
-    ├── models/              # Data models
-    ├── providers/           # Riverpod providers
-    └── utils/               # Utility functions
-
-supabase/
-├── functions/
-│   ├── send-email/          # Email sending function
-│   └── sync-data/           # Data sync function
-└── migrations/              # Database migrations
-
-assets/
-├── images/                  # App images
-├── logos/                   # Company logos
-└── screenshots/             # Product screenshots (CRT-77-1R-N, etc.)
-
-## Key Features Implementation
-
-### Authentication with Supabase Auth
-
-Benefits over manual auth:
-- **Security**: Industry-standard JWT tokens, secure password reset
-- **Session Management**: Automatic token refresh, no manual handling
-- **Multi-device**: Sessions persist across devices
-- **Social Login Ready**: Easy to add Google, Apple, GitHub auth
-- **Row Level Security**: Automatic data isolation per user
-- **MFA Support**: Built-in multi-factor authentication
-
-```dart
-// Simple authentication with Supabase
-final response = await supabase.auth.signInWithPassword(
-  email: email,
-  password: password,
-);
-
-// Automatic session persistence
-final user = supabase.auth.currentUser;
-```
-
-### Offline Synchronization
-
-The app maintains full functionality offline:
-
-```dart
-// All operations work offline first
-final client = await OfflineService.saveClientOffline(
-  Client(
-    id: OfflineService.generateOfflineId(),
-    company: 'ACME Corp',
-    // ...
-  ),
-);
-
-// Automatic sync when online
-Connectivity().onConnectivityChanged.listen((result) {
-  if (result != ConnectivityResult.none) {
-    OfflineService.syncPendingChanges();
-  }
-});
-```
-
-### Email via Edge Functions
-
-Emails are sent server-side for security:
-
-```dart
-// Client-side call
-await supabase.functions.invoke(
-  'send-email',
-  body: {
-    'to': clientEmail,
-    'quoteData': quote.toJson(),
-    'attachPdf': true,
-  },
-);
-```
-
-### Real-time Updates
-
-When online, see changes from other users instantly:
-
-```dart
-// Subscribe to real-time changes
-supabase
-  .from('quotes')
-  .stream(primaryKey: ['id'])
-  .eq('user_id', userId)
-  .listen((data) {
-    // Update local cache
-    updateQuotes(data);
-  });
-```
-
-## Mobile App Distribution
-
-### iOS Deployment
-
-1. **Configure in Xcode**:
-   - Open `ios/Runner.xcworkspace`
-   - Set bundle identifier
-   - Configure signing certificates
-
-2. **Build and deploy**:
-```bash
-flutter build ios --release
-# Upload via Xcode or Transporter
-```
-
-### Android Deployment
-
-1. **Configure signing**:
-   - Create keystore
-   - Update `android/app/build.gradle`
-
-2. **Build and deploy**:
+**Android**
 ```bash
 flutter build appbundle --release
-# Upload to Google Play Console
 ```
 
-### Desktop Deployment
-
-**macOS**:
+**iOS**
 ```bash
-flutter build macos --release
-# Distribute via DMG or Mac App Store
+flutter build ios --release
 ```
 
-**Windows**:
+**Windows**
 ```bash
 flutter build windows --release
-# Create installer with Inno Setup or MSIX
 ```
 
-## API Migration from Python
+## 📊 Database Schema
 
-### Authentication
-- **Python**: Manual JWT tokens with SQLite
-- **Flutter**: Supabase Auth with automatic session management
+### Realtime Database Structure
+```json
+{
+  "products": {
+    "$productId": {
+      "sku": "string",
+      "category": "string",
+      "description": "string",
+      "price": "number"
+    }
+  },
+  "clients": {
+    "$clientId": {
+      "company": "string",
+      "email": "string"
+    }
+  },
+  "quotes": {
+    "$quoteId": {
+      "client_id": "string",
+      "items": [],
+      "total": "number"
+    }
+  }
+}
+```
 
-### Database
-- **Python**: SQLite with manual sync
-- **Flutter**: Hive for local storage + Supabase for cloud
+## 🔧 Key Features
 
-### Email
-- **Python**: Direct SMTP from client
-- **Flutter**: Supabase Edge Functions (secure server-side)
+### Offline-First Architecture
+- Local caching with Hive
+- Automatic sync when online
+- Conflict resolution with timestamps
+- Queue system for offline operations
 
-### File Storage
-- **Python**: Local file system
-- **Flutter**: Supabase Storage with CDN
+### Super Admin Features
+- Excel bulk import for products
+- User management
+- System configuration
+- Access: andres@turboairmexico.com
 
-## Performance Optimizations
+### Real-time Synchronization
+- Live updates across devices
+- Automatic reconnection handling
+- Optimistic UI updates
 
-1. **Lazy Loading**: Products load on-demand with pagination
-2. **Image Caching**: `CachedNetworkImage` for efficient image loading
-3. **State Management**: Riverpod for efficient rebuilds
-4. **Database Indexing**: Proper indexes on frequently queried fields
-5. **Connection Pooling**: Reuse database connections
+## 📱 Platform-Specific Notes
 
-## Testing
+### Web
+- Deployed on Vercel
+- HTML renderer for better compatibility
+- Responsive design for all screen sizes
+
+### Mobile (iOS/Android)
+- Native performance
+- Platform-specific UI adaptations
+- Push notifications ready
+
+### Desktop (Windows/macOS)
+- Full feature parity
+- Native file system access
+- Keyboard shortcuts
+
+## 🧪 Testing
 
 ```bash
-# Unit tests
+# Run all tests
 flutter test
+
+# Run with coverage
+flutter test --coverage
 
 # Integration tests
 flutter test integration_test
-
-# Widget tests
-flutter test test/widgets
-
-# Coverage report
-flutter test --coverage
 ```
 
-## Monitoring
-
-- **Sentry**: Error tracking and performance monitoring
-- **Firebase Analytics**: User behavior tracking
-- **Supabase Dashboard**: Database metrics and logs
-
-## Security
-
-1. **Row Level Security (RLS)**: Database-level access control
-2. **Environment Variables**: Sensitive data in environment files
-3. **HTTPS Only**: All network requests over HTTPS
-4. **Input Validation**: Client and server-side validation
-5. **Rate Limiting**: API rate limits via Edge Functions
-
-## Troubleshooting
+## 🐛 Troubleshooting
 
 ### Common Issues
 
 1. **Build fails on Vercel**
-   - Ensure Flutter is in PATH
-   - Check build command in `vercel.json`
+   - Check `vercel.json` configuration
+   - Ensure environment variables are set
 
-2. **Offline sync not working**
-   - Check Hive box initialization
-   - Verify sync queue implementation
+2. **Firebase connection issues**
+   - Verify `.env` file configuration
+   - Check Firebase project settings
 
-3. **Images not loading**
-   - Verify asset paths
-   - Check Supabase Storage policies
+3. **Offline sync not working**
+   - Clear Hive cache: Delete app data
+   - Check network permissions
 
-4. **Authentication errors**
-   - Verify Supabase URL and anon key
-   - Check RLS policies
+4. **Email sending fails**
+   - Verify Gmail app-specific password
+   - Check SMTP settings
 
-## Contributing
+## 📧 Support
 
-1. Fork the repository
-2. Create a feature branch
-3. Commit changes
-4. Push to branch
-5. Create Pull Request
+For technical support:
+- Email: turboairquotes@gmail.com
+- GitHub Issues: [Create Issue](https://github.com/REDXICAN/Turbo-Air-Viewer-Flutter-App/issues)
 
-## License
+## 📜 License
 
-This project is proprietary software owned by Turbo Air.
+Proprietary software owned by Turbo Air Inc. All rights reserved.
 
-## Support
+## ✅ Recent Updates
 
-For support, email: turboairquotes@gmail.com
-
-## Roadmap
-
-- [ ] Advanced analytics dashboard
-- [ ] Barcode scanning
-- [ ] Voice search
-- [ ] AR product preview
-- [ ] Multi-language support
-- [ ] Advanced reporting
-- [ ] Integration with ERP systems
-- [ ] Push notifications
-- [ ] Offline PDF generation
-- [ ] Custom pricing rules
+- **Security Hardening**: All credentials moved to environment variables
+- **Excel Import**: Super admin can bulk import products
+- **Logging System**: Comprehensive logging with logger package
+- **Preview Feature**: Excel upload preview before database commit
+- **Vercel Ready**: Full deployment configuration for Vercel
+- **Production Ready**: Complete security audit passed

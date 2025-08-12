@@ -10,7 +10,10 @@
       "WebFetch(domain:pub.dev)",
       "Bash(flutter:*)",
       "Bash(dart analyze:*)",
-      "Bash(firebase deploy:*)"
+      "Bash(firebase deploy:*)",
+      "Bash(git add:*)",
+      "Bash(git commit:*)",
+      "Bash(git push:*)"
     ],
     "deny": [],
     "ask": []
