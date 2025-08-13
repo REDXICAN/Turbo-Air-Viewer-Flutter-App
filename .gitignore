@@ -29,7 +29,14 @@ key.properties
 # DO NOT commit firebase_options.dart - contains API keys
 lib/firebase_options.dart
 firebase_options.dart
+**/firebase_options.dart
 .firebaserc
+# Deployment files with potential hardcoded keys
+DEPLOY_TO_VERCEL.md
+VERCEL_DEPLOYMENT.md
+VERCEL_DEPLOY.md
+# Script files that might contain sensitive defaults
+generate-firebase-config.sh
 
 # === EMAIL CONFIG - NEVER COMMIT ===
 lib/core/config/email_config.dart
