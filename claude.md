@@ -76,7 +76,7 @@ lib/
 ### Environment Variables (.env)
 ```env
 ADMIN_EMAIL=andres@turboairmexico.com
-ADMIN_PASSWORD=[secure]
+ADMIN_PASSWORD=[secure-password]
 EMAIL_SENDER_ADDRESS=turboairquotes@gmail.com
 EMAIL_APP_PASSWORD=[app-specific-password]
 FIREBASE_PROJECT_ID=turbo-air-viewer

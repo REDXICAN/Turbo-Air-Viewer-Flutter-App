@@ -29,7 +29,12 @@
       "Bash(if [ -f .env ])",
       "Bash(then echo \".env file exists\")",
       "Bash(else echo \".env file not found\")",
-      "Bash(fi)"
+      "Bash(fi)",
+      "Bash(move libdebug_firebase.html webdebug.html)",
+      "Bash(start webdebug.html)",
+      "Bash(start webdebug_firebase.html)",
+      "Bash(start debug_firebase.html)",
+      "Bash(del libcoreservicesfirebase_test_service.dart)"
     ],
     "deny": [],
     "ask": [
