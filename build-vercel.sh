@@ -24,7 +24,7 @@ flutter pub get
 
 # Build for web with optimizations
 echo "🏗️ Building optimized web release..."
-flutter build web --release --web-renderer html --no-tree-shake-icons
+flutter build web --release --no-tree-shake-icons
 
 # Verify build output exists
 if [ ! -d "build/web" ]; then
