@@ -11,6 +11,9 @@
     "FLUTTER_SUPPRESS_ANALYTICS": "true",
     "PUB_CACHE": "/tmp/pub-cache"
   },
+  "git": {
+    "deploymentEnabled": false
+  },
   "headers": [
     {
       "source": "/assets/(.*)",
