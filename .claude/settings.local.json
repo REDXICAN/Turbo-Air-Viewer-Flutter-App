@@ -20,7 +20,9 @@
       "Bash(dart fix:*)",
       "Bash(git rm:*)",
       "Bash(true)",
-      "Bash(timeout:*)"
+      "Bash(timeout:*)",
+      "Bash(git grep:*)",
+      "Bash(git filter-branch:*)"
     ],
     "deny": [],
     "ask": [
