@@ -34,7 +34,11 @@
       "Bash(start webdebug.html)",
       "Bash(start webdebug_firebase.html)",
       "Bash(start debug_firebase.html)",
-      "Bash(del libcoreservicesfirebase_test_service.dart)"
+      "Bash(del libcoreservicesfirebase_test_service.dart)",
+      "Bash(firebase projects:list:*)",
+      "Bash(firebase logout:*)",
+      "Bash(firebase login:*)",
+      "Bash(firebase use:*)"
     ],
     "deny": [],
     "ask": [
