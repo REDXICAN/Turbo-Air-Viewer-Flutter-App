@@ -25,10 +25,10 @@ void main() async {
   // CRITICAL: Load environment variables FIRST
   try {
     await dotenv.load(fileName: ".env");
-    print('Environment variables loaded successfully');
+    AppLogger.info('Environment variables loaded successfully', category: LogCategory.general);
   } catch (e) {
-    print('WARNING: Failed to load .env file - using fallback firebase_options.dart');
-    print('Error: $e');
+    AppLogger.warning('Failed to load .env file - using fallback firebase_options.dart', data: e.toString());
+    AppLogger.error('Environment loading error', error: e, category: LogCategory.general);
   }
 
   // Initialize Firebase with environment variables or fallback

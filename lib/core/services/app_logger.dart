@@ -244,7 +244,7 @@ class AppLogger {
         lineLength: 120,
         colors: true,
         printEmojis: true,
-        printTime: true,
+        dateTimeFormat: DateTimeFormat.onlyTimeAndSinceStart,
       ),
       output: MultiOutput(outputs),
     );
@@ -322,7 +322,7 @@ class AppLogger {
       'duration_ms': durationMs,
       ...?metrics,
     };
-    _logger.i('Performance: $operation took ${durationMs}ms', error: LogCategory.performance);
+    _logger.i('Performance: $operation took ${durationMs}ms, metrics: $data', error: LogCategory.performance);
     
     // Send to Firebase Performance Monitoring if needed
     if (!kDebugMode && durationMs > 1000) {
@@ -348,9 +348,9 @@ class AppLogger {
     };
     
     if (statusCode != null && statusCode >= 400) {
-      _logger.e('Network Error: $method $url returned $statusCode', error: LogCategory.network);
+      _logger.e('Network Error: $method $url returned $statusCode, data: $data', error: LogCategory.network);
     } else {
-      _logger.d('Network: $method $url${statusCode != null ? ' ($statusCode)' : ''}', error: LogCategory.network);
+      _logger.d('Network: $method $url${statusCode != null ? ' ($statusCode)' : ''}, data: $data', error: LogCategory.network);
     }
   }
   
@@ -362,7 +362,7 @@ class AppLogger {
       'email': email,
       ...?data,
     };
-    _logger.i('Auth: $event${email != null ? ' for $email' : ''}', error: LogCategory.auth);
+    _logger.i('Auth: $event${email != null ? ' for $email' : ''}, details: $logData', error: LogCategory.auth);
   }
   
   /// Log database operations
