@@ -88,7 +88,7 @@ turbo-air-flutter/
 ├── .env                                 # Environment variables (git-ignored)
 ├── .gitignore                           # Git ignore configuration
 ├── pubspec.yaml                         # Dependencies
-├── vercel.json                          # Vercel deployment config
+├── firebase.json                        # Firebase hosting config
 └── database.rules.json                  # Firebase security rules
 ```
 
@@ -180,13 +180,16 @@ flutter run -d windows
 
 ## 🌐 Deployment
 
-### Vercel Deployment (Web)
+### Web Deployment
 ```bash
 # Build for web
 flutter build web --release
 
-# Deploy with Vercel CLI
-vercel --prod
+# Deploy to Firebase Hosting
+firebase deploy --only hosting
+
+# Or deploy to GitHub Pages
+./deploy-github-pages.bat
 ```
 
 ### Mobile Deployment

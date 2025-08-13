@@ -31,12 +31,9 @@ lib/firebase_options.dart
 firebase_options.dart
 **/firebase_options.dart
 .firebaserc
-# Deployment files with potential hardcoded keys
-DEPLOY_TO_VERCEL.md
-VERCEL_DEPLOYMENT.md
-VERCEL_DEPLOY.md
-# Script files that might contain sensitive defaults
-generate-firebase-config.sh
+# Deployment scripts with sensitive data
+*.env.local
+*.env.production
 
 # === EMAIL CONFIG - NEVER COMMIT ===
 lib/core/config/email_config.dart

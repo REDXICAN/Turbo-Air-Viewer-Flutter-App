@@ -176,12 +176,14 @@ FIREBASE_DATABASE_URL=https://turbo-air-viewer-default-rtdb.firebaseio.com
 
 ## 🚀 Deployment
 
-### Vercel Configuration
+### Firebase Hosting Configuration
 ```json
 {
-  "buildCommand": "bash build-vercel.sh",
-  "installCommand": "bash install-flutter.sh",
-  "outputDirectory": "build/web"
+  "hosting": {
+    "public": "build/web",
+    "ignore": ["firebase.json", "**/.*", "**/node_modules/**"],
+    "rewrites": [{"source": "**", "destination": "/index.html"}]
+  }
 }
 ```
 
