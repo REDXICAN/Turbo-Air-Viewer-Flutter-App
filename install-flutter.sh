@@ -26,6 +26,12 @@ flutter config --no-cli-animations
 echo "🔍 Verifying Flutter installation..."
 flutter doctor -v
 
+# Generate firebase_options.dart if it doesn't exist
+if [ ! -f "lib/firebase_options.dart" ]; then
+  echo "📝 Generating firebase_options.dart..."
+  bash generate-firebase-config.sh
+fi
+
 # Get dependencies
 echo "📚 Installing project dependencies..."
 flutter pub get
