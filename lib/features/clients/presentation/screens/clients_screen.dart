@@ -25,6 +25,7 @@ class ClientsScreen extends ConsumerStatefulWidget {
 
 class _ClientsScreenState extends ConsumerState<ClientsScreen> {
   bool _showAddForm = false;
+  String? _editingClientId;
   final _formKey = GlobalKey<FormState>();
   final _companyController = TextEditingController();
   final _contactNameController = TextEditingController();
@@ -89,7 +90,7 @@ class _ClientsScreenState extends ConsumerState<ClientsScreen> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        'Add New Client',
+                        _editingClientId != null ? 'Edit Client' : 'Add New Client',
                         style: theme.textTheme.titleLarge,
                       ),
                       const SizedBox(height: 16),
@@ -208,7 +209,7 @@ class _ClientsScreenState extends ConsumerState<ClientsScreen> {
                           ElevatedButton.icon(
                             onPressed: _saveClient,
                             icon: const Icon(Icons.save),
-                            label: const Text('Save Client'),
+                            label: Text(_editingClientId != null ? 'Update Client' : 'Save Client'),
                           ),
                         ],
                       ),
@@ -401,6 +402,7 @@ class _ClientsScreenState extends ConsumerState<ClientsScreen> {
     _stateController.clear();
     _zipCodeController.clear();
     _notesController.clear();
+    _editingClientId = null;
   }
 
   Future<void> _saveClient() async {
@@ -409,7 +411,7 @@ class _ClientsScreenState extends ConsumerState<ClientsScreen> {
     try {
       final dbService = ref.read(databaseServiceProvider);
 
-      await dbService.addClient({
+      final clientData = {
         'company': _companyController.text,
         'contact_name': _contactNameController.text.isEmpty
             ? null
@@ -423,7 +425,15 @@ class _ClientsScreenState extends ConsumerState<ClientsScreen> {
         'zip_code':
             _zipCodeController.text.isEmpty ? null : _zipCodeController.text,
         'notes': _notesController.text.isEmpty ? null : _notesController.text,
-      });
+      };
+
+      if (_editingClientId != null) {
+        // Update existing client
+        await dbService.updateClient(_editingClientId!, clientData);
+      } else {
+        // Add new client
+        await dbService.addClient(clientData);
+      }
 
       setState(() {
         _showAddForm = false;
@@ -432,8 +442,10 @@ class _ClientsScreenState extends ConsumerState<ClientsScreen> {
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Client added successfully'),
+          SnackBar(
+            content: Text(_editingClientId != null 
+                ? 'Client updated successfully' 
+                : 'Client added successfully'),
             backgroundColor: Colors.green,
           ),
         );
@@ -442,7 +454,9 @@ class _ClientsScreenState extends ConsumerState<ClientsScreen> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Error adding client: $e'),
+            content: Text(_editingClientId != null 
+                ? 'Error updating client: $e'
+                : 'Error adding client: $e'),
             backgroundColor: Colors.red,
           ),
         );
@@ -451,10 +465,20 @@ class _ClientsScreenState extends ConsumerState<ClientsScreen> {
   }
 
   void _editClient(Client client) {
-    // TODO: Implement edit functionality
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Edit functionality coming soon')),
-    );
+    // Populate form with existing client data
+    setState(() {
+      _editingClientId = client.id;
+      _companyController.text = client.company;
+      _contactNameController.text = client.contactName ?? '';
+      _emailController.text = client.email ?? '';
+      _phoneController.text = client.phone ?? '';
+      _addressController.text = client.address ?? '';
+      _cityController.text = client.city ?? '';
+      _stateController.text = client.state ?? '';
+      _zipCodeController.text = client.zipCode ?? '';
+      _notesController.text = client.notes ?? '';
+      _showAddForm = true;
+    });
   }
 
   Future<void> _deleteClient(Client client) async {

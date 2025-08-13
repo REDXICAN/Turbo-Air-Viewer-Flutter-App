@@ -1,8 +1,10 @@
 // lib/core/services/email_service.dart
 
+import 'dart:typed_data';
 import 'package:mailer/mailer.dart';
 import 'package:mailer/smtp_server.dart';
 import '../config/secure_email_config.dart';
+import 'export_service.dart';
 
 class EmailService {
   late SmtpServer _smtpServer;
@@ -143,20 +145,15 @@ $userSignature
     return buffer.toString();
   }
 
-  /// Send quote with PDF attachment
+  /// Send quote with PDF attachment (fully functional)
   Future<bool> sendQuoteWithPDF({
     required String recipientEmail,
     required String recipientName,
     required String quoteNumber,
-    required List<int> pdfBytes,
+    required String quoteId,
     required Map<String, dynamic> userInfo,
     String? customMessage,
   }) async {
-    // Create PDF attachment using bytes
-    // Create temporary file for attachment
-    // final attachment = FileAttachment(File.fromRawPath(pdfBytes));
-    // Note: FileAttachment.fromBytes is not available, need to use File constructor
-
     // Build email HTML content
     final htmlContent = '''
 <div style="font-family: Arial, sans-serif; color: #333;">
@@ -178,13 +175,81 @@ $userSignature
 </div>
     ''';
 
+    // Generate PDF attachment
+    List<Attachment> attachments = [];
+    try {
+      // Generate PDF bytes from ExportService
+      final Uint8List pdfBytes = await ExportService.generateQuotePDF(quoteId);
+      
+      // Create attachment from bytes using StreamAttachment
+      final attachment = StreamAttachment(
+        Stream.value(pdfBytes),
+        'application/pdf',
+        fileName: 'Quote_$quoteNumber.pdf',
+        size: pdfBytes.length,
+      );
+      
+      attachments.add(attachment);
+    } catch (e) {
+      // If PDF generation fails, log error but still send email
+      print('Failed to generate PDF attachment: $e');
+    }
+
     return await sendQuoteEmail(
       recipientEmail: recipientEmail,
       recipientName: recipientName,
       quoteNumber: quoteNumber,
       htmlContent: htmlContent,
       userInfo: userInfo,
-      attachments: [], // TODO: Add attachment when FileAttachment.fromBytes is implemented
+      attachments: attachments,
+    );
+  }
+  
+  /// Send quote with provided PDF bytes (alternative method)
+  Future<bool> sendQuoteWithPDFBytes({
+    required String recipientEmail,
+    required String recipientName,
+    required String quoteNumber,
+    required Uint8List pdfBytes,
+    required Map<String, dynamic> userInfo,
+    String? customMessage,
+  }) async {
+    // Build email HTML content
+    final htmlContent = '''
+<div style="font-family: Arial, sans-serif; color: #333;">
+  <h2 style="color: #0066cc;">TurboAir Quote #$quoteNumber</h2>
+  
+  <p>Dear $recipientName,</p>
+  
+  <p>${customMessage ?? 'Please find attached your TurboAir quote. If you have any questions or need modifications, please don\'t hesitate to contact your sales representative.'}</p>
+  
+  <p style="margin-top: 20px;">
+    <strong>Quote Details:</strong><br>
+    Quote Number: $quoteNumber<br>
+    Date: ${DateTime.now().toString().split(' ')[0]}<br>
+  </p>
+  
+  <p style="margin-top: 20px;">
+    The detailed quote is attached as a PDF document.
+  </p>
+</div>
+    ''';
+
+    // Create attachment from provided bytes
+    final attachment = StreamAttachment(
+      Stream.value(pdfBytes),
+      'application/pdf',
+      fileName: 'Quote_$quoteNumber.pdf',
+      size: pdfBytes.length,
+    );
+
+    return await sendQuoteEmail(
+      recipientEmail: recipientEmail,
+      recipientName: recipientName,
+      quoteNumber: quoteNumber,
+      htmlContent: htmlContent,
+      userInfo: userInfo,
+      attachments: [attachment],
     );
   }
 }

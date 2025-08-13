@@ -453,10 +453,28 @@ class _QuotesScreenState extends ConsumerState<QuotesScreen> {
           TextButton(
             onPressed: () async {
               Navigator.pop(dialogContext);
-              // TODO: Implement delete functionality
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('Quote deleted')),
-              );
+              try {
+                final dbService = ref.read(databaseServiceProvider);
+                await dbService.deleteQuote(quote.id ?? '');
+                
+                if (mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text('Quote deleted successfully'),
+                      backgroundColor: Colors.green,
+                    ),
+                  );
+                }
+              } catch (e) {
+                if (mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text('Error deleting quote: $e'),
+                      backgroundColor: Colors.red,
+                    ),
+                  );
+                }
+              }
             },
             child: const Text('Delete', style: TextStyle(color: Colors.red)),
           ),

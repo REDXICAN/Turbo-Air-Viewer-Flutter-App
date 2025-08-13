@@ -1,117 +1,138 @@
 # Turbo Air Equipment Viewer - Flutter Application
 
-A cross-platform B2B equipment catalog and quote management system built with Flutter and Firebase, featuring offline-first architecture and real-time synchronization.
+A comprehensive B2B equipment catalog and quote management system built with Flutter and Firebase, featuring offline-first architecture, real-time synchronization, and full email integration with PDF attachments.
 
-## 🚀 Features
+## 🚀 Key Features
 
+### Core Functionality
 - **Multi-Platform Support**: iOS, Android, Web, Windows, macOS
-- **Offline-First Architecture**: Full functionality without internet
-- **Secure Authentication**: Firebase Auth with role-based access (Admin, Sales, Distributor)
-- **Real-time Database**: Firebase Realtime Database with automatic sync
-- **Quote Management**: Create, edit, and export quotes as PDF/Excel
-- **Email Integration**: Professional quote emails via Gmail SMTP
-- **Excel Import**: Super admin can bulk import products via Excel
-- **Advanced Search**: Real-time product search with category filtering
-- **Client Management**: Complete CRM for managing clients and quotes
-- **Persistent Cart**: Shopping cart syncs across devices
+- **Offline-First Architecture**: Full functionality without internet connection
+- **Real-time Sync**: Automatic data synchronization when online
+- **Role-Based Access**: Admin, Sales, and Distributor roles
+- **PDF Generation**: Professional quote PDFs with company branding
+- **Email Integration**: Send quotes with PDF attachments via Gmail SMTP
 
-## 🛠️ Tech Stack
+### Business Features
+- **Product Catalog**: 1000+ products with images and specifications
+- **Quote Management**: Create, edit, delete, and export quotes
+- **Client Management**: Full CRM with add, edit, delete functionality
+- **Excel Import**: Bulk product import/update for administrators
+- **Shopping Cart**: Persistent cart with real-time updates
+- **Search & Filter**: Advanced product search with category filtering
+
+## 🛠️ Technology Stack
 
 ### Frontend
 - **Flutter 3.x**: Cross-platform UI framework
 - **Riverpod**: State management solution
 - **Hive**: Local database for offline support
 - **Go Router**: Navigation and routing
+- **PDF Package**: PDF generation for quotes
+- **Mailer 6.0.1**: Email with attachment support
 
 ### Backend Services
 - **Firebase Realtime Database**: NoSQL cloud database with real-time sync
 - **Firebase Authentication**: Secure user authentication
 - **Firebase Storage**: Product images and documents
-- **Gmail SMTP**: Email service for quotes
+- **Gmail SMTP**: Professional email delivery
 
-### Deployment
-- **Vercel**: Web deployment platform
-- **GitHub Actions**: CI/CD pipeline (optional)
+### Development Tools
+- **Flutter DevTools**: Performance monitoring
+- **Logger**: Comprehensive logging system
+- **Device Info Plus**: Device information collection
+- **Connectivity Plus**: Network status monitoring
 
 ## 📁 Project Structure
 
 ```
-lib/
-├── main.dart                         # App entry point with Firebase init
-├── app.dart                          # Main application widget
-├── firebase_options.dart             # Firebase configuration (git-ignored)
-├── core/
-│   ├── config/
-│   │   ├── env_config.dart          # Environment variables access
-│   │   └── secure_email_config.dart # Secure email configuration
-│   ├── theme/
-│   │   └── app_theme.dart           # Material theme definitions
-│   ├── router/
-│   │   └── app_router.dart          # Navigation configuration
-│   ├── services/
-│   │   ├── realtime_database_service.dart  # Database operations
-│   │   ├── offline_service.dart            # Offline data management
-│   │   ├── firebase_auth_service.dart      # Auth wrapper
-│   │   ├── email_service.dart              # Email functionality
-│   │   ├── export_service.dart             # PDF/Excel export
-│   │   ├── excel_upload_service.dart       # Excel import for admin
-│   │   └── logging_service.dart            # Centralized logging
-│   └── widgets/
-│       └── offline_status_widget.dart      # Connection indicator
-├── features/
-│   ├── auth/                        # Login/Register screens
-│   ├── products/                    # Product catalog & details
-│   ├── clients/                     # Client management
-│   ├── cart/                        # Shopping cart
-│   ├── quotes/                      # Quote creation & management
-│   ├── admin/                       # Admin panel
-│   └── profile/                     # User profile
-└── assets/
-    └── screenshots/                  # Product images by SKU
+turbo-air-flutter/
+├── lib/
+│   ├── main.dart                         # App entry point with Firebase init
+│   ├── app.dart                          # Main application widget
+│   ├── firebase_options.dart             # Firebase configuration
+│   ├── core/
+│   │   ├── config/
+│   │   │   ├── app_config.dart          # App constants
+│   │   │   ├── env_config.dart          # Environment variables
+│   │   │   └── secure_email_config.dart # Email configuration
+│   │   ├── services/
+│   │   │   ├── realtime_database_service.dart  # Database operations
+│   │   │   ├── offline_service.dart            # Offline management
+│   │   │   ├── firebase_auth_service.dart      # Authentication
+│   │   │   ├── email_service.dart              # Email with PDF attachments
+│   │   │   ├── export_service.dart             # PDF/Excel generation
+│   │   │   ├── excel_upload_service.dart       # Excel import
+│   │   │   ├── cache_manager.dart              # Cache management
+│   │   │   └── app_logger.dart                 # Logging service
+│   │   ├── utils/
+│   │   │   ├── product_image_helper.dart       # Product image mapping
+│   │   │   └── responsive_helper.dart          # Responsive utilities
+│   │   └── widgets/
+│   │       ├── offline_status_widget.dart      # Connection indicator
+│   │       └── offline_queue_widget.dart       # Sync queue display
+│   ├── features/
+│   │   ├── auth/                        # Authentication screens
+│   │   ├── products/                    # Product catalog
+│   │   ├── clients/                     # Client management
+│   │   ├── cart/                        # Shopping cart
+│   │   ├── quotes/                      # Quote management
+│   │   ├── admin/                       # Admin panel
+│   │   ├── home/                        # Dashboard
+│   │   └── profile/                     # User profile
+│   └── assets/
+│       └── screenshots/                  # Product images (1000+ SKUs)
+├── android/                             # Android configuration
+├── ios/                                 # iOS configuration
+├── web/                                 # Web configuration
+├── windows/                             # Windows configuration
+├── .env                                 # Environment variables (git-ignored)
+├── .gitignore                           # Git ignore configuration
+├── pubspec.yaml                         # Dependencies
+├── vercel.json                          # Vercel deployment config
+└── database.rules.json                  # Firebase security rules
 ```
 
-## 🔐 Security Configuration
+## 🔐 Security & Configuration
 
 ### Environment Variables
-Create a `.env` file in the project root (never commit this):
+Create a `.env` file in the project root:
 
 ```env
 # Admin Credentials
 ADMIN_EMAIL=andres@turboairmexico.com
-ADMIN_PASSWORD=your_secure_password
+ADMIN_PASSWORD=secure_password_here
 
 # Firebase Configuration
 FIREBASE_PROJECT_ID=turbo-air-viewer
 FIREBASE_DATABASE_URL=https://turbo-air-viewer-default-rtdb.firebaseio.com
-FIREBASE_API_KEY_WEB=your_web_api_key
+FIREBASE_API_KEY_WEB=your_api_key
 FIREBASE_AUTH_DOMAIN=turbo-air-viewer.firebaseapp.com
 FIREBASE_STORAGE_BUCKET=turbo-air-viewer.appspot.com
 FIREBASE_MESSAGING_SENDER_ID=your_sender_id
-FIREBASE_APP_ID_WEB=your_web_app_id
+FIREBASE_APP_ID_WEB=your_app_id
 
 # Email Service
 EMAIL_SENDER_ADDRESS=turboairquotes@gmail.com
-EMAIL_APP_PASSWORD=your_app_specific_password
-SMTP_HOST=smtp.gmail.com
-SMTP_PORT=587
+EMAIL_APP_PASSWORD=your_app_password
 ```
 
 ### Security Features
-- All sensitive data in environment variables
-- Comprehensive `.gitignore` preventing credential leaks
-- Firebase security rules for data access control
-- Role-based permissions (Admin, Sales, Distributor)
-- Secure email configuration with app-specific passwords
+- Environment variables for sensitive data
+- Firebase security rules for data access
+- Role-based access control
+- Secure email credentials
+- Input validation and sanitization
+- Error handling and logging
 
-## 🚀 Setup Instructions
+## 🚀 Installation & Setup
 
 ### Prerequisites
 - Flutter SDK 3.0+
 - Firebase CLI
-- Node.js (for Vercel deployment)
 - Git
+- VS Code or Android Studio
 
-### Local Development
+### Setup Steps
 
 1. **Clone the repository**
 ```bash
@@ -124,181 +145,149 @@ cd Turbo-Air-Viewer-Flutter-App
 flutter pub get
 ```
 
-3. **Set up environment variables**
-- Copy `.env.example` to `.env`
-- Fill in your Firebase and email credentials
+3. **Configure environment**
+- Create `.env` file with your credentials
+- Update Firebase configuration files
 
 4. **Run the application**
 ```bash
 # Web
 flutter run -d chrome
 
-# iOS
-flutter run -d ios
-
-# Android
-flutter run -d android
+# Mobile
+flutter run
 
 # Windows
 flutter run -d windows
-
-# Or use the PowerShell script
-./run_local.ps1
 ```
+
+## 📱 Platform-Specific Setup
+
+### Android
+- Minimum SDK: 21 (Android 5.0)
+- Target SDK: 33 (Android 13)
+- Google Services configured
+
+### iOS
+- Minimum iOS: 11.0
+- Xcode 14+ required
+- Info.plist configured for network access
+
+### Web
+- Supports all modern browsers
+- Responsive design for all screen sizes
+- PWA capabilities enabled
 
 ## 🌐 Deployment
 
 ### Vercel Deployment (Web)
-
-1. **Push to GitHub**
 ```bash
-git add .
-git commit -m "Ready for deployment"
-git push origin main
-```
-
-2. **Deploy on Vercel**
-- Go to https://vercel.com/new
-- Import your GitHub repository
-- Vercel will auto-detect Flutter configuration
-- Add environment variables in Vercel dashboard
-- Deploy!
-
-### Build Commands
-
-**Web**
-```bash
+# Build for web
 flutter build web --release
+
+# Deploy with Vercel CLI
+vercel --prod
 ```
 
-**Android**
+### Mobile Deployment
 ```bash
+# Android
 flutter build appbundle --release
-```
 
-**iOS**
-```bash
+# iOS
 flutter build ios --release
 ```
 
-**Windows**
-```bash
-flutter build windows --release
+## 📊 Features Implementation Status
+
+| Feature | Status | Notes |
+|---------|--------|-------|
+| User Authentication | ✅ Complete | Firebase Auth with roles |
+| Product Catalog | ✅ Complete | 1000+ products with images |
+| Client Management | ✅ Complete | Add, edit, delete functionality |
+| Quote Management | ✅ Complete | Create, edit, delete, export |
+| PDF Generation | ✅ Complete | Professional quote PDFs |
+| Email with Attachments | ✅ Complete | PDF attachments via Gmail |
+| Excel Import | ✅ Complete | Bulk product management |
+| Offline Support | ✅ Complete | Full offline functionality |
+| Real-time Sync | ✅ Complete | Automatic data synchronization |
+| Search & Filter | ✅ Complete | Advanced product search |
+| Shopping Cart | ✅ Complete | Persistent across sessions |
+| Admin Panel | ✅ Complete | User and product management |
+
+## 🔧 Recent Updates
+
+### Version 1.0.0 (Current)
+- ✅ Implemented PDF attachments in email service
+- ✅ Added client edit functionality
+- ✅ Implemented quote deletion
+- ✅ Fixed all compilation errors
+- ✅ Enhanced offline synchronization
+- ✅ Improved error handling
+- ✅ Updated security configuration
+
+## 📝 API Documentation
+
+### Email Service
+```dart
+// Send quote with PDF attachment
+await EmailService().sendQuoteWithPDF(
+  recipientEmail: 'client@example.com',
+  recipientName: 'Client Name',
+  quoteNumber: 'Q-2025-001',
+  quoteId: 'quote_id_123',
+  userInfo: userProfileData,
+);
 ```
 
-## 📊 Database Schema
+### Database Service
+```dart
+// Client operations
+await dbService.addClient(clientData);
+await dbService.updateClient(clientId, updatedData);
+await dbService.deleteClient(clientId);
 
-### Realtime Database Structure
-```json
-{
-  "products": {
-    "$productId": {
-      "sku": "string",
-      "category": "string",
-      "description": "string",
-      "price": "number"
-    }
-  },
-  "clients": {
-    "$clientId": {
-      "company": "string",
-      "email": "string"
-    }
-  },
-  "quotes": {
-    "$quoteId": {
-      "client_id": "string",
-      "items": [],
-      "total": "number"
-    }
-  }
-}
-```
-
-## 🔧 Key Features
-
-### Offline-First Architecture
-- Local caching with Hive
-- Automatic sync when online
-- Conflict resolution with timestamps
-- Queue system for offline operations
-
-### Super Admin Features
-- Excel bulk import for products
-- User management
-- System configuration
-- Access: andres@turboairmexico.com
-
-### Real-time Synchronization
-- Live updates across devices
-- Automatic reconnection handling
-- Optimistic UI updates
-
-## 📱 Platform-Specific Notes
-
-### Web
-- Deployed on Vercel
-- HTML renderer for better compatibility
-- Responsive design for all screen sizes
-
-### Mobile (iOS/Android)
-- Native performance
-- Platform-specific UI adaptations
-- Push notifications ready
-
-### Desktop (Windows/macOS)
-- Full feature parity
-- Native file system access
-- Keyboard shortcuts
-
-## 🧪 Testing
-
-```bash
-# Run all tests
-flutter test
-
-# Run with coverage
-flutter test --coverage
-
-# Integration tests
-flutter test integration_test
+// Quote operations
+await dbService.createQuote(quoteData);
+await dbService.updateQuote(quoteId, updatedData);
+await dbService.deleteQuote(quoteId);
 ```
 
 ## 🐛 Troubleshooting
 
 ### Common Issues
 
-1. **Build fails on Vercel**
-   - Check `vercel.json` configuration
-   - Ensure environment variables are set
+1. **Build Errors**
+```bash
+flutter clean
+flutter pub get
+flutter pub upgrade
+```
 
-2. **Firebase connection issues**
-   - Verify `.env` file configuration
-   - Check Firebase project settings
+2. **Firebase Connection**
+- Verify `.env` file configuration
+- Check Firebase project settings
+- Ensure network connectivity
 
-3. **Offline sync not working**
-   - Clear Hive cache: Delete app data
-   - Check network permissions
+3. **Email Not Sending**
+- Verify Gmail app password
+- Check SMTP settings
+- Enable less secure app access
 
-4. **Email sending fails**
-   - Verify Gmail app-specific password
-   - Check SMTP settings
+## 📄 License
 
-## 📧 Support
+Proprietary software owned by Turbo Air Inc. All rights reserved.
+
+## 🤝 Support
 
 For technical support:
 - Email: turboairquotes@gmail.com
 - GitHub Issues: [Create Issue](https://github.com/REDXICAN/Turbo-Air-Viewer-Flutter-App/issues)
 
-## 📜 License
+## 👥 Contributors
 
-Proprietary software owned by Turbo Air Inc. All rights reserved.
+- Andres - Lead Developer (andres@turboairmexico.com)
 
-## ✅ Recent Updates
+---
 
-- **Security Hardening**: All credentials moved to environment variables
-- **Excel Import**: Super admin can bulk import products
-- **Logging System**: Comprehensive logging with logger package
-- **Preview Feature**: Excel upload preview before database commit
-- **Vercel Ready**: Full deployment configuration for Vercel
-- **Production Ready**: Complete security audit passed
+© 2025 Turbo Air Inc. All rights reserved.

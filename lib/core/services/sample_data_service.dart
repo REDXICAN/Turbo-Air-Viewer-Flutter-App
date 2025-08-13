@@ -219,7 +219,7 @@ class SampleDataService {
       {
         'client_id': 'demo_client_1',
         'client_name': 'Restaurant Supply Co.',
-        'quote_number': 'Q2024001',
+        'quote_number': 'Q2025001',
         'items': [
           {
             'product_id': 'demo_product_1',
@@ -249,7 +249,7 @@ class SampleDataService {
       {
         'client_id': 'demo_client_2',
         'client_name': 'City Cafe',
-        'quote_number': 'Q2024002',
+        'quote_number': 'Q2025002',
         'items': [
           {
             'product_id': 'demo_product_3',
@@ -271,7 +271,7 @@ class SampleDataService {
       {
         'client_id': 'demo_client_3',
         'client_name': 'Fresh Market',
-        'quote_number': 'Q2024003',
+        'quote_number': 'Q2025003',
         'items': [
           {
             'product_id': 'demo_product_4',
