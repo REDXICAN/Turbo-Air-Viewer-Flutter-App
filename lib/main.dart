@@ -28,7 +28,7 @@ void main() async {
     // Don't log yet - logger not initialized
   } catch (e) {
     // Silent fail - will use fallback firebase_options.dart
-    print('Warning: Failed to load .env file - using fallback firebase_options.dart: $e');
+    // Can't use logger yet - not initialized
   }
 
   // Initialize Firebase with environment variables or fallback

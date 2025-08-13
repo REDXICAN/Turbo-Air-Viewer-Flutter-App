@@ -227,6 +227,34 @@ class Product {
   }
 
   factory Product.fromMap(Map<String, dynamic> map) {
+    // Helper function to safely parse int from various types
+    int? parseIntSafely(dynamic value) {
+      if (value == null) return null;
+      if (value is int) return value;
+      if (value is String) {
+        // Remove non-numeric characters and try to parse
+        final cleanValue = value.replaceAll(RegExp(r'[^0-9]'), '');
+        if (cleanValue.isEmpty) return null;
+        return int.tryParse(cleanValue);
+      }
+      if (value is double) return value.toInt();
+      return null;
+    }
+
+    // Helper function to safely parse double
+    double parseDoubleSafely(dynamic value, {double defaultValue = 0.0}) {
+      if (value == null) return defaultValue;
+      if (value is double) return value;
+      if (value is int) return value.toDouble();
+      if (value is String) return double.tryParse(value) ?? defaultValue;
+      return defaultValue;
+    }
+
+    // Helper function to safely parse int with default
+    int parseIntWithDefault(dynamic value, {int defaultValue = 0}) {
+      return parseIntSafely(value) ?? defaultValue;
+    }
+
     return Product(
       id: map['id'],
       model: map['model'] ?? '',
@@ -237,9 +265,9 @@ class Product {
       subcategory: map['subcategory'],
       productType: map['productType'],
       sku: map['sku'],
-      price: (map['price'] ?? 0).toDouble(),
+      price: parseDoubleSafely(map['price']),
       imageUrl: map['imageUrl'],
-      stock: map['stock'] ?? 0,
+      stock: parseIntWithDefault(map['stock']),
       dimensions: map['dimensions'],
       weight: map['weight'],
       voltage: map['voltage'],
@@ -251,8 +279,8 @@ class Product {
       refrigerant: map['refrigerant'],
       compressor: map['compressor'],
       capacity: map['capacity'],
-      doors: map['doors'],
-      shelves: map['shelves'],
+      doors: parseIntSafely(map['doors']),
+      shelves: parseIntSafely(map['shelves']),
       createdAt:
           DateTime.parse(map['createdAt'] ?? DateTime.now().toIso8601String()),
       updatedAt:

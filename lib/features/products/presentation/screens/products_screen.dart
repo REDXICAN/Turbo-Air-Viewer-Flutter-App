@@ -83,12 +83,27 @@ class _ProductsScreenState extends ConsumerState<ProductsScreen> {
     try {
       setState(() => _isUploading = true);
       
-      // Pick Excel file
-      final result = await FilePicker.platform.pickFiles(
-        type: FileType.custom,
-        allowedExtensions: ['xlsx', 'xls'],
-        withData: true,
-      );
+      // Pick Excel file with better error handling
+      FilePickerResult? result;
+      try {
+        result = await FilePicker.platform.pickFiles(
+          type: FileType.custom,
+          allowedExtensions: ['xlsx', 'xls'],
+          withData: true,
+        );
+      } catch (e) {
+        AppLogger.error('FilePicker error', error: e, category: LogCategory.excel);
+        if (mounted) {
+          setState(() => _isUploading = false);
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Failed to pick file: $e'),
+              backgroundColor: Colors.red,
+            ),
+          );
+        }
+        return;
+      }
 
       if (result != null && result.files.single.bytes != null) {
         // Show progress dialog for parsing

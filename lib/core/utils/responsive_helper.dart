@@ -70,9 +70,9 @@ class ResponsiveHelper {
     return getValue(
       context,
       mobile: double.infinity,
-      tablet: 800,
-      desktop: 1200,
-      largeDesktop: 1400,
+      tablet: double.infinity,
+      desktop: double.infinity,
+      largeDesktop: double.infinity,
     );
   }
 }

@@ -19,7 +19,8 @@
       "Bash(rm:*)",
       "Bash(dart fix:*)",
       "Bash(git rm:*)",
-      "Bash(true)"
+      "Bash(true)",
+      "Bash(timeout:*)"
     ],
     "deny": [],
     "ask": [
