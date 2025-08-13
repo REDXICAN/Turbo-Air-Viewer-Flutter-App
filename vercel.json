@@ -14,6 +14,9 @@
   "git": {
     "deploymentEnabled": false
   },
+  "github": {
+    "silent": true
+  },
   "headers": [
     {
       "source": "/assets/(.*)",

@@ -22,9 +22,9 @@ export PATH="$PATH:$PWD/flutter/bin"
 flutter config --no-analytics
 flutter config --no-cli-animations
 
-# Run Flutter doctor to verify installation
+# Verify Flutter installation (simplified for CI environment)
 echo "🔍 Verifying Flutter installation..."
-flutter doctor -v
+flutter --version
 
 # Generate firebase_options.dart if it doesn't exist
 if [ ! -f "lib/firebase_options.dart" ]; then
