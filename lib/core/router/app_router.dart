@@ -27,17 +27,11 @@ final routerProvider = Provider<GoRouter>((ref) {
     redirect: (context, state) {
       final isAuthenticated = authState.valueOrNull != null;
       final isAuthRoute = state.uri.path.startsWith('/auth');
-      final isProductsRoute = state.uri.path.startsWith('/products');
 
       // Fix line 172 - Cast user properly
       final user = state.extra as Map<String, dynamic>?;
       if (user != null && user['isAdmin'] == true) {
         // Handle admin logic if needed
-      }
-
-      // Allow products to be viewed without authentication
-      if (isProductsRoute) {
-        return null;
       }
 
       if (!isAuthenticated && !isAuthRoute) {
