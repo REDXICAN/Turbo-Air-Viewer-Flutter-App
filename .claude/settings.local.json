@@ -22,7 +22,8 @@
       "Bash(true)",
       "Bash(timeout:*)",
       "Bash(git grep:*)",
-      "Bash(git filter-branch:*)"
+      "Bash(git filter-branch:*)",
+      "Bash(set FILTER_BRANCH_SQUELCH_WARNING=1)"
     ],
     "deny": [],
     "ask": [
