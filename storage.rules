@@ -1,0 +1,25 @@
+rules_version = '2';
+service firebase.storage {
+  match /b/{bucket}/o {
+    // Allow read access to all users for product images
+    match /products/{allPaths=**} {
+      allow read: if true;
+      allow write: if request.auth != null && 
+        (request.auth.token.email == 'andres@turboairmexico.com' || 
+         request.auth.token.email == 'turboairquotes@gmail.com');
+    }
+    
+    // Allow authenticated users to upload quotes PDFs
+    match /quotes/{userId}/{allPaths=**} {
+      allow read: if request.auth != null && 
+        (request.auth.uid == userId || 
+         request.auth.token.email == 'andres@turboairmexico.com');
+      allow write: if request.auth != null && request.auth.uid == userId;
+    }
+    
+    // Default: deny all other access
+    match /{allPaths=**} {
+      allow read, write: if false;
+    }
+  }
+}

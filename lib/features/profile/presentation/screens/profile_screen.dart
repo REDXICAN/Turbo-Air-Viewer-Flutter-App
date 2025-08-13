@@ -328,7 +328,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                 {'displayName': nameController.text.trim()},
               );
 
-              if (mounted) {
+              if (context.mounted) {
                 Navigator.pop(context);
                 ScaffoldMessenger.of(context).showSnackBar(
                   const SnackBar(
@@ -418,7 +418,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                 success = false;
               }
 
-              if (mounted) {
+              if (context.mounted) {
                 Navigator.pop(context);
                 ScaffoldMessenger.of(context).showSnackBar(
                   SnackBar(
@@ -499,7 +499,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
               await CacheManager.clearAllCache();
               await _checkOfflineData();
 
-              if (mounted) {
+              if (context.mounted) {
                 Navigator.pop(context);
                 ScaffoldMessenger.of(context).showSnackBar(
                   const SnackBar(content: Text('Cache cleared')),
@@ -529,7 +529,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
             onPressed: () async {
               await ref.read(authServiceProvider).signOut();
 
-              if (mounted) {
+              if (context.mounted) {
                 Navigator.of(context).pushNamedAndRemoveUntil(
                   '/login',
                   (route) => false,
@@ -592,7 +592,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                 success = false;
               }
 
-              if (mounted) {
+              if (context.mounted) {
                 if (success) {
                   Navigator.of(context).pushNamedAndRemoveUntil(
                     '/login',

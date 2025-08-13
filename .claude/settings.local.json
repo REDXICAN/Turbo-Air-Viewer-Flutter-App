@@ -24,7 +24,12 @@
       "Bash(git grep:*)",
       "Bash(git filter-branch:*)",
       "Bash(set FILTER_BRANCH_SQUELCH_WARNING=1)",
-      "Bash(git gc:*)"
+      "Bash(git gc:*)",
+      "Bash(python:*)",
+      "Bash(if [ -f .env ])",
+      "Bash(then echo \".env file exists\")",
+      "Bash(else echo \".env file not found\")",
+      "Bash(fi)"
     ],
     "deny": [],
     "ask": [

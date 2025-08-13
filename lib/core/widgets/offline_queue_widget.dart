@@ -293,7 +293,7 @@ class _OfflineStatusWidgetState extends State<OfflineStatusWidget>
                 child: TextButton.icon(
                   onPressed: () async {
                     final cacheInfo = await OfflineService.getCacheInfo();
-                    if (mounted) {
+                    if (context.mounted) {
                       _showCacheInfo(cacheInfo);
                     }
                   },

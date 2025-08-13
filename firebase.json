@@ -1,49 +1,51 @@
 {
-  "flutter": {
-    "platforms": {
-      "android": {
-        "default": {
-          "projectId": "turbo-air-viewer",
-          "appId": "1:118954210086:android:5fa61a986163fcd9b187e7",
-          "fileOutput": "android/app/google-services.json"
-        }
-      },
-      "dart": {
-        "lib/firebase_options.dart": {
-          "projectId": "turbo-air-viewer",
-          "configurations": {
-            "android": "1:118954210086:android:5fa61a986163fcd9b187e7",
-            "ios": "1:118954210086:ios:22326e13f6d3b762b187e7",
-            "web": "1:118954210086:web:c1bfc8c90049145bb187e7",
-            "windows": "1:118954210086:web:b44c8afb0d9cb19cb187e7"
-          }
-        }
+  "hosting": {
+    "public": "build/web",
+    "ignore": [
+      "firebase.json",
+      "**/.*",
+      "**/node_modules/**"
+    ],
+    "rewrites": [
+      {
+        "source": "**",
+        "destination": "/index.html"
       }
-    }
+    ],
+    "headers": [
+      {
+        "source": "**/*.@(jpg|jpeg|gif|png|svg|webp|ico)",
+        "headers": [
+          {
+            "key": "Cache-Control",
+            "value": "max-age=31536000"
+          }
+        ]
+      },
+      {
+        "source": "**/*.@(js|css)",
+        "headers": [
+          {
+            "key": "Cache-Control",
+            "value": "max-age=86400"
+          }
+        ]
+      },
+      {
+        "source": "**/*.@(woff|woff2|ttf|otf)",
+        "headers": [
+          {
+            "key": "Cache-Control",
+            "value": "max-age=31536000"
+          }
+        ]
+      }
+    ]
   },
-  "functions": [
-    {
-      "source": "functions",
-      "codebase": "default",
-      "ignore": [
-        "node_modules",
-        ".git",
-        "firebase-debug.log",
-        "firebase-debug.*.log",
-        "*.local"
-      ],
-      "predeploy": [
-        "npm --prefix \"$RESOURCE_DIR\" run lint"
-      ]
-    }
-  ],
   "database": {
     "rules": "database.rules.json"
   },
-  "firestore": {
-    "database": "(default)",
-    "location": "northamerica-south1",
-    "rules": "firestore.rules",
-    "indexes": "(firestore.indexes.json)"
+  "storage": {
+    "rules": "storage.rules"
   }
 }

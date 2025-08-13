@@ -273,7 +273,7 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen> {
                                   await dbService.addToCart(
                                       widget.productId, _quantity);
 
-                                  if (mounted) {
+                                  if (context.mounted) {
                                     ScaffoldMessenger.of(context).showSnackBar(
                                       SnackBar(
                                         content: Text(
@@ -288,7 +288,7 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen> {
                                     );
                                   }
                                 } catch (e) {
-                                  if (mounted) {
+                                  if (context.mounted) {
                                     ScaffoldMessenger.of(context).showSnackBar(
                                       SnackBar(
                                         content:

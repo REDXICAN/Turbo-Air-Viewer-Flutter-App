@@ -160,7 +160,7 @@ class _ProductsScreenState extends ConsumerState<ProductsScreen> {
                     clearExisting: clearExisting,
                   );
                   
-                  if (mounted) {
+                  if (mounted && context.mounted) {
                     Navigator.of(context).pop(); // Close progress dialog
                     
                     // Refresh products list
@@ -255,7 +255,7 @@ class _ProductsScreenState extends ConsumerState<ProductsScreen> {
       }
     } catch (e) {
       AppLogger.error('Excel upload error', error: e, category: LogCategory.excel);
-      if (mounted) {
+      if (mounted && context.mounted) {
         // Try to close any open dialogs
         try {
           Navigator.of(context).pop();
