@@ -469,9 +469,9 @@ class _ClientsScreenState extends ConsumerState<ClientsScreen> {
     setState(() {
       _editingClientId = client.id;
       _companyController.text = client.company;
-      _contactNameController.text = client.contactName ?? '';
-      _emailController.text = client.email ?? '';
-      _phoneController.text = client.phone ?? '';
+      _contactNameController.text = client.contactName;
+      _emailController.text = client.email;
+      _phoneController.text = client.phone;
       _addressController.text = client.address ?? '';
       _cityController.text = client.city ?? '';
       _stateController.text = client.state ?? '';

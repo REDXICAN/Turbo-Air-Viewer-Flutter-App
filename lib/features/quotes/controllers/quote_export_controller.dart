@@ -1,5 +1,6 @@
 // lib/features/quotes/controllers/quote_export_controller.dart
 
+import 'dart:typed_data';
 import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
 import 'package:firebase_auth/firebase_auth.dart';
@@ -223,10 +224,11 @@ class QuoteExportController {
       final quoteData = quoteDoc.data() ?? {};
 
       // Generate PDF with user info
-      final pdfBytes = await generateQuotePDF(
+      final pdfBytesList = await generateQuotePDF(
         quoteData: quoteData,
         userInfo: userInfo,
       );
+      final pdfBytes = Uint8List.fromList(pdfBytesList);
 
       // Prepare custom message based on user role
       String customMessage;
@@ -247,7 +249,7 @@ the products or pricing.
       }
 
       // Send email with all information
-      final success = await _emailService.sendQuoteWithPDF(
+      final success = await _emailService.sendQuoteWithPDFBytes(
         recipientEmail: customerEmail,
         recipientName: customerName,
         quoteNumber: quoteData['quoteNumber'] ?? quoteId,

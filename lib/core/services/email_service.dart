@@ -154,29 +154,57 @@ $userSignature
     required Map<String, dynamic> userInfo,
     String? customMessage,
   }) async {
-    // Build email HTML content
+    // Build responsive email HTML content with table
     final htmlContent = '''
-<div style="font-family: Arial, sans-serif; color: #333;">
-  <h2 style="color: #0066cc;">TurboAir Quote #$quoteNumber</h2>
-  
-  <p>Dear $recipientName,</p>
-  
-  <p>${customMessage ?? 'Please find attached your TurboAir quote. If you have any questions or need modifications, please don\'t hesitate to contact your sales representative.'}</p>
-  
-  <p style="margin-top: 20px;">
-    <strong>Quote Details:</strong><br>
-    Quote Number: $quoteNumber<br>
-    Date: ${DateTime.now().toString().split(' ')[0]}<br>
-  </p>
-  
-  <p style="margin-top: 20px;">
-    The detailed quote is attached as a PDF document.
-  </p>
-</div>
+<!DOCTYPE html>
+<html>
+<head>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <style>
+    @media only screen and (max-width: 600px) {
+      .container { width: 100% !important; padding: 10px !important; }
+      .quote-table { font-size: 12px !important; }
+      .header-text { font-size: 20px !important; }
+    }
+  </style>
+</head>
+<body style="margin: 0; padding: 0; font-family: Arial, sans-serif;">
+  <div class="container" style="max-width: 600px; margin: 0 auto; padding: 20px;">
+    <h2 class="header-text" style="color: #0066cc; text-align: center;">TurboAir Quote #$quoteNumber</h2>
+    
+    <p>Dear $recipientName,</p>
+    
+    <p>${customMessage ?? 'Please find attached your TurboAir quote. If you have any questions or need modifications, please don\'t hesitate to contact your sales representative.'}</p>
+    
+    <table class="quote-table" style="width: 100%; border-collapse: collapse; margin: 20px 0; border: 1px solid #ddd;">
+      <tr style="background-color: #f2f2f2;">
+        <td style="padding: 12px; border: 1px solid #ddd; font-weight: bold;">Quote Number</td>
+        <td style="padding: 12px; border: 1px solid #ddd;">$quoteNumber</td>
+      </tr>
+      <tr>
+        <td style="padding: 12px; border: 1px solid #ddd; font-weight: bold;">Date</td>
+        <td style="padding: 12px; border: 1px solid #ddd;">${DateTime.now().toString().split(' ')[0]}</td>
+      </tr>
+      <tr style="background-color: #f2f2f2;">
+        <td style="padding: 12px; border: 1px solid #ddd; font-weight: bold;">Customer</td>
+        <td style="padding: 12px; border: 1px solid #ddd;">$recipientName</td>
+      </tr>
+    </table>
+    
+    <div style="background-color: #e7f3ff; padding: 15px; border-radius: 5px; margin: 20px 0;">
+      <p style="margin: 0; color: #0066cc;">
+        <strong>📎 Attachment:</strong> The detailed quote with all items and pricing is attached as a PDF document.
+      </p>
+    </div>
+  </div>
+</body>
+</html>
     ''';
 
     // Generate PDF attachment
     List<Attachment> attachments = [];
+    String enhancedHtmlContent = htmlContent;
+    
     try {
       // Generate PDF bytes from ExportService
       final Uint8List pdfBytes = await ExportService.generateQuotePDF(quoteId);
@@ -186,20 +214,22 @@ $userSignature
         Stream.value(pdfBytes),
         'application/pdf',
         fileName: 'Quote_$quoteNumber.pdf',
-        size: pdfBytes.length,
       );
       
       attachments.add(attachment);
     } catch (e) {
-      // If PDF generation fails, log error but still send email
-      print('Failed to generate PDF attachment: $e');
+      // If PDF generation fails, don't send email without attachment
+      // But include error details in the response
+      
+      // Don't send email without proper attachment - return false
+      return false;
     }
 
     return await sendQuoteEmail(
       recipientEmail: recipientEmail,
       recipientName: recipientName,
       quoteNumber: quoteNumber,
-      htmlContent: htmlContent,
+      htmlContent: enhancedHtmlContent,
       userInfo: userInfo,
       attachments: attachments,
     );
@@ -213,26 +243,53 @@ $userSignature
     required Uint8List pdfBytes,
     required Map<String, dynamic> userInfo,
     String? customMessage,
+    String? quoteId,
   }) async {
-    // Build email HTML content
+    // Build responsive email HTML content with table
     final htmlContent = '''
-<div style="font-family: Arial, sans-serif; color: #333;">
-  <h2 style="color: #0066cc;">TurboAir Quote #$quoteNumber</h2>
-  
-  <p>Dear $recipientName,</p>
-  
-  <p>${customMessage ?? 'Please find attached your TurboAir quote. If you have any questions or need modifications, please don\'t hesitate to contact your sales representative.'}</p>
-  
-  <p style="margin-top: 20px;">
-    <strong>Quote Details:</strong><br>
-    Quote Number: $quoteNumber<br>
-    Date: ${DateTime.now().toString().split(' ')[0]}<br>
-  </p>
-  
-  <p style="margin-top: 20px;">
-    The detailed quote is attached as a PDF document.
-  </p>
-</div>
+<!DOCTYPE html>
+<html>
+<head>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <style>
+    @media only screen and (max-width: 600px) {
+      .container { width: 100% !important; padding: 10px !important; }
+      .quote-table { font-size: 12px !important; }
+      .header-text { font-size: 20px !important; }
+    }
+  </style>
+</head>
+<body style="margin: 0; padding: 0; font-family: Arial, sans-serif;">
+  <div class="container" style="max-width: 600px; margin: 0 auto; padding: 20px;">
+    <h2 class="header-text" style="color: #0066cc; text-align: center;">TurboAir Quote #$quoteNumber</h2>
+    
+    <p>Dear $recipientName,</p>
+    
+    <p>${customMessage ?? 'Please find attached your TurboAir quote. If you have any questions or need modifications, please don\'t hesitate to contact your sales representative.'}</p>
+    
+    <table class="quote-table" style="width: 100%; border-collapse: collapse; margin: 20px 0; border: 1px solid #ddd;">
+      <tr style="background-color: #f2f2f2;">
+        <td style="padding: 12px; border: 1px solid #ddd; font-weight: bold;">Quote Number</td>
+        <td style="padding: 12px; border: 1px solid #ddd;">$quoteNumber</td>
+      </tr>
+      <tr>
+        <td style="padding: 12px; border: 1px solid #ddd; font-weight: bold;">Date</td>
+        <td style="padding: 12px; border: 1px solid #ddd;">${DateTime.now().toString().split(' ')[0]}</td>
+      </tr>
+      <tr style="background-color: #f2f2f2;">
+        <td style="padding: 12px; border: 1px solid #ddd; font-weight: bold;">Customer</td>
+        <td style="padding: 12px; border: 1px solid #ddd;">$recipientName</td>
+      </tr>
+    </table>
+    
+    <div style="background-color: #e7f3ff; padding: 15px; border-radius: 5px; margin: 20px 0;">
+      <p style="margin: 0; color: #0066cc;">
+        <strong>📎 Attachment:</strong> The detailed quote with all items and pricing is attached as a PDF document.
+      </p>
+    </div>
+  </div>
+</body>
+</html>
     ''';
 
     // Create attachment from provided bytes
@@ -240,7 +297,6 @@ $userSignature
       Stream.value(pdfBytes),
       'application/pdf',
       fileName: 'Quote_$quoteNumber.pdf',
-      size: pdfBytes.length,
     );
 
     return await sendQuoteEmail(

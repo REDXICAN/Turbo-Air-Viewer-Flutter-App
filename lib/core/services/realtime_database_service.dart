@@ -314,6 +314,33 @@ class RealtimeDatabaseService {
     });
   }
 
+  Future<void> deleteQuote(String quoteId) async {
+    try {
+      if (userId == null) {
+        throw Exception('User must be authenticated to delete quotes');
+      }
+      
+      // Delete from user's quotes
+      final quoteRef = _db.ref('quotes/$userId/$quoteId');
+      
+      // Check if quote exists
+      final snapshot = await quoteRef.get();
+      if (!snapshot.exists) {
+        throw Exception('Quote not found');
+      }
+      
+      // Delete the quote
+      await quoteRef.remove();
+      
+      // Also delete associated quote items if they exist
+      await _db.ref('quote_items/$quoteId').remove();
+      
+    } catch (e) {
+      // Log error and rethrow
+      rethrow;
+    }
+  }
+
   // ============ USER PROFILES ============
   Future<Map<String, dynamic>?> getUserProfile(String uid) async {
     final snapshot = await _db.ref('user_profiles/$uid').get();
