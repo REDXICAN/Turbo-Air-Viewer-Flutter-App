@@ -13,6 +13,7 @@ import 'core/services/offline_service.dart';
 import 'core/services/realtime_database_service.dart';
 import 'core/services/cache_manager.dart';
 import 'core/services/sample_data_service.dart';
+import 'core/services/sample_data_initializer.dart';
 import 'core/services/app_logger.dart';
 import 'core/config/env_config.dart';
 import 'core/utils/error_handler.dart';
@@ -90,6 +91,15 @@ void main() async {
   // Initialize sample data if needed
   await SampleDataService.initializeSampleData();
   AppLogger.info('Sample data service initialized', category: LogCategory.database);
+  
+  // Initialize sample products for web demo
+  if (kIsWeb) {
+    try {
+      await SampleDataInitializer.initializeSampleProducts();
+    } catch (e) {
+      AppLogger.error('Failed to initialize sample products', error: e, category: LogCategory.database);
+    }
+  }
 
   runApp(
     const ProviderScope(
