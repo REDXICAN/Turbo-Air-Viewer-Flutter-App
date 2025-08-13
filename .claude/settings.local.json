@@ -38,7 +38,8 @@
       "Bash(firebase projects:list:*)",
       "Bash(firebase logout:*)",
       "Bash(firebase login:*)",
-      "Bash(firebase use:*)"
+      "Bash(firebase use:*)",
+      "Bash(start test_products.html)"
     ],
     "deny": [],
     "ask": [
