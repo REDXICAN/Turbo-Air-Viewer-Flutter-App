@@ -25,10 +25,10 @@ void main() async {
   // CRITICAL: Load environment variables FIRST
   try {
     await dotenv.load(fileName: ".env");
-    AppLogger.info('Environment variables loaded successfully', category: LogCategory.general);
+    // Don't log yet - logger not initialized
   } catch (e) {
-    AppLogger.warning('Failed to load .env file - using fallback firebase_options.dart', data: e.toString());
-    AppLogger.error('Environment loading error', error: e, category: LogCategory.general);
+    // Silent fail - will use fallback firebase_options.dart
+    print('Warning: Failed to load .env file - using fallback firebase_options.dart: $e');
   }
 
   // Initialize Firebase with environment variables or fallback
@@ -42,7 +42,7 @@ void main() async {
     FlutterError.onError = FirebaseCrashlytics.instance.recordFlutterError;
   }
 
-  // Initialize logging service
+  // NOW Initialize logging service after Firebase is ready
   await AppLogger.initialize(
     logLevel: kDebugMode ? Level.debug : Level.info,
     enableFirebaseLogs: !kDebugMode,
@@ -59,6 +59,7 @@ void main() async {
   await ErrorHandler.initialize();
 
   AppLogger.info('App initialization started', category: LogCategory.general);
+  AppLogger.info('Environment variables loaded: ${EnvConfig.isLoaded}', category: LogCategory.general);
 
   // Configure Firebase Realtime Database for offline support
   // Note: setPersistenceEnabled is not supported on web platform
