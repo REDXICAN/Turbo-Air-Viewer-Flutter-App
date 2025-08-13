@@ -39,7 +39,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
       final timestamp = DateTime.now().millisecondsSinceEpoch;
       final demoEmail = 'demo_$timestamp@turboair.com';
       final demoPassword = EnvConfig.demoPassword;
-      final demoName = 'Demo User';
+      const demoName = 'Demo User';
 
       // First create the demo account
       final signUp = ref.read(signUpProvider);

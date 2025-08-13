@@ -16,7 +16,8 @@
       "Bash(touch:*)",
       "Bash(dart run:*)",
       "Bash(mv:*)",
-      "Bash(rm:*)"
+      "Bash(rm:*)",
+      "Bash(dart fix:*)"
     ],
     "deny": [],
     "ask": [

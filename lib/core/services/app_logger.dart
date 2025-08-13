@@ -96,7 +96,8 @@ class WebhookLogOutput extends LogOutput {
             'timestamp': DateTime.now().toIso8601String(),
           }),
         ).catchError((e) {
-          // Silently fail
+          // Silently fail - return a dummy response
+          return http.Response('Error', 500);
         });
       } catch (e) {
         // Silently fail

@@ -309,7 +309,7 @@ class FirestoreService {
         .where('sku', isGreaterThanOrEqualTo: searchQuery)
         .where('sku',
             isLessThan:
-                '${searchQuery}\uf8ff') // FIXED: Use string interpolation
+                '$searchQuery\uf8ff') // FIXED: Use string interpolation
         .limit(20)
         .get();
 

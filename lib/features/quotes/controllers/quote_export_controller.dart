@@ -21,7 +21,7 @@ class QuoteExportController {
     pdf.addPage(
       pw.MultiPage(
         pageFormat: PdfPageFormat.letter,
-        margin: pw.EdgeInsets.all(40),
+        margin: const pw.EdgeInsets.all(40),
         build: (pw.Context context) {
           return [
             // Header
@@ -61,7 +61,7 @@ class QuoteExportController {
   /// Build PDF header
   pw.Widget _buildPDFHeader() {
     return pw.Container(
-      padding: pw.EdgeInsets.all(20),
+      padding: const pw.EdgeInsets.all(20),
       decoration: pw.BoxDecoration(
         color: PdfColors.blue50,
         borderRadius: pw.BorderRadius.circular(8),
@@ -80,7 +80,7 @@ class QuoteExportController {
           pw.SizedBox(height: 5),
           pw.Text(
             'Professional Refrigeration Solutions',
-            style: pw.TextStyle(
+            style: const pw.TextStyle(
               fontSize: 14,
               color: PdfColors.grey700,
             ),
@@ -93,7 +93,7 @@ class QuoteExportController {
   /// Build sales representative information section
   pw.Widget _buildSalesRepInfo(Map<String, dynamic> userInfo) {
     return pw.Container(
-      padding: pw.EdgeInsets.all(15),
+      padding: const pw.EdgeInsets.all(15),
       decoration: pw.BoxDecoration(
         border: pw.Border.all(color: PdfColors.grey300),
         borderRadius: pw.BorderRadius.circular(8),
@@ -148,13 +148,13 @@ class QuoteExportController {
 
   pw.Widget _buildInfoRow(String label, String value) {
     return pw.Padding(
-      padding: pw.EdgeInsets.symmetric(vertical: 2),
+      padding: const pw.EdgeInsets.symmetric(vertical: 2),
       child: pw.Row(
         crossAxisAlignment: pw.CrossAxisAlignment.start,
         children: [
           pw.Text(
             label,
-            style: pw.TextStyle(
+            style: const pw.TextStyle(
               fontSize: 10,
               color: PdfColors.grey700,
             ),
@@ -302,7 +302,7 @@ the products or pricing.
           pw.SizedBox(height: 5),
           pw.Text('Date: ${DateTime.now().toString().split(' ')[0]}'),
           pw.Text(
-              'Valid Until: ${DateTime.now().add(Duration(days: 30)).toString().split(' ')[0]}'),
+              'Valid Until: ${DateTime.now().add(const Duration(days: 30)).toString().split(' ')[0]}'),
         ],
       ),
     );
@@ -343,30 +343,30 @@ the products or pricing.
       children: [
         // Header row
         pw.TableRow(
-          decoration: pw.BoxDecoration(color: PdfColors.grey200),
+          decoration: const pw.BoxDecoration(color: PdfColors.grey200),
           children: [
             pw.Padding(
-              padding: pw.EdgeInsets.all(5),
+              padding: const pw.EdgeInsets.all(5),
               child: pw.Text('Model',
                   style: pw.TextStyle(fontWeight: pw.FontWeight.bold)),
             ),
             pw.Padding(
-              padding: pw.EdgeInsets.all(5),
+              padding: const pw.EdgeInsets.all(5),
               child: pw.Text('Description',
                   style: pw.TextStyle(fontWeight: pw.FontWeight.bold)),
             ),
             pw.Padding(
-              padding: pw.EdgeInsets.all(5),
+              padding: const pw.EdgeInsets.all(5),
               child: pw.Text('Qty',
                   style: pw.TextStyle(fontWeight: pw.FontWeight.bold)),
             ),
             pw.Padding(
-              padding: pw.EdgeInsets.all(5),
+              padding: const pw.EdgeInsets.all(5),
               child: pw.Text('Price',
                   style: pw.TextStyle(fontWeight: pw.FontWeight.bold)),
             ),
             pw.Padding(
-              padding: pw.EdgeInsets.all(5),
+              padding: const pw.EdgeInsets.all(5),
               child: pw.Text('Total',
                   style: pw.TextStyle(fontWeight: pw.FontWeight.bold)),
             ),
@@ -376,24 +376,24 @@ the products or pricing.
         ...items.map((item) => pw.TableRow(
               children: [
                 pw.Padding(
-                  padding: pw.EdgeInsets.all(5),
+                  padding: const pw.EdgeInsets.all(5),
                   child: pw.Text(item['model'] ?? ''),
                 ),
                 pw.Padding(
-                  padding: pw.EdgeInsets.all(5),
+                  padding: const pw.EdgeInsets.all(5),
                   child: pw.Text(item['description'] ?? ''),
                 ),
                 pw.Padding(
-                  padding: pw.EdgeInsets.all(5),
+                  padding: const pw.EdgeInsets.all(5),
                   child: pw.Text('${item['quantity'] ?? 0}'),
                 ),
                 pw.Padding(
-                  padding: pw.EdgeInsets.all(5),
+                  padding: const pw.EdgeInsets.all(5),
                   child: pw.Text(
                       '\$${item['price']?.toStringAsFixed(2) ?? '0.00'}'),
                 ),
                 pw.Padding(
-                  padding: pw.EdgeInsets.all(5),
+                  padding: const pw.EdgeInsets.all(5),
                   child: pw.Text(
                       '\$${item['total']?.toStringAsFixed(2) ?? '0.00'}'),
                 ),
@@ -450,7 +450,7 @@ the products or pricing.
 
   pw.Widget _buildTermsAndConditions() {
     return pw.Container(
-      padding: pw.EdgeInsets.all(10),
+      padding: const pw.EdgeInsets.all(10),
       decoration: pw.BoxDecoration(
         color: PdfColors.grey100,
         borderRadius: pw.BorderRadius.circular(5),
@@ -471,7 +471,7 @@ the products or pricing.
             '• Payment terms: Net 30 days\n'
             '• Shipping and handling charges may apply\n'
             '• All sales are subject to TurboAir standard terms and conditions',
-            style: pw.TextStyle(fontSize: 9),
+            style: const pw.TextStyle(fontSize: 9),
           ),
         ],
       ),

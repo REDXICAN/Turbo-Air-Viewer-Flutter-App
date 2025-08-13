@@ -74,7 +74,7 @@ class HybridDatabaseService {
 
   Stream<QuerySnapshot<Map<String, dynamic>>> getAllUsers() {
     if (!isSuperAdmin) {
-      return Stream.empty();
+      return const Stream.empty();
     }
     return _firestore.collection('users').snapshots();
   }

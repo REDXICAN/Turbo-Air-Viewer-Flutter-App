@@ -7,7 +7,6 @@ import 'package:go_router/go_router.dart';
 import '../../core/services/offline_service.dart';
 import '../../core/services/cache_manager.dart';
 import '../../core/services/app_logger.dart';
-import '../../core/models/models.dart';
 import '../../core/utils/responsive_helper.dart';
 import '../auth/presentation/providers/auth_provider.dart';
 
@@ -91,7 +90,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
         });
       }
     } catch (e) {
-      AppLogger.error('Error loading statistics', e, LogCategory.database);
+      AppLogger.error('Error loading statistics', error: e, category: LogCategory.database);
     }
   }
 

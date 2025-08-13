@@ -225,11 +225,11 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                   const SizedBox(height: 16),
 
                   // Version
-                  Card(
+                  const Card(
                     child: ListTile(
-                      leading: const Icon(Icons.info_outline),
-                      title: const Text('App Version'),
-                      subtitle: const Text('1.0.0'),
+                      leading: Icon(Icons.info_outline),
+                      title: Text('App Version'),
+                      subtitle: Text('1.0.0'),
                     ),
                   ),
 
@@ -601,7 +601,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                 } else {
                   Navigator.pop(context);
                   ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
+                    const SnackBar(
                       content: Text(
                           'Failed to delete account'),
                       backgroundColor: Colors.red,

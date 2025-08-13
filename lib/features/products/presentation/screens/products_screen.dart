@@ -7,7 +7,6 @@ import 'package:firebase_database/firebase_database.dart';
 import '../../../../core/config/app_config.dart';
 import '../../../../core/models/models.dart';
 import '../../../../core/utils/product_image_helper.dart';
-import '../../../../core/services/cache_manager.dart';
 import '../../../../core/services/excel_upload_service.dart';
 import '../../../../core/services/app_logger.dart';
 import '../../../auth/presentation/providers/auth_provider.dart';
@@ -31,7 +30,7 @@ final productsProvider =
             products.add(product);
           }
         } catch (e) {
-          AppLogger.error('Error parsing product $key', e, LogCategory.database);
+          AppLogger.error('Error parsing product $key', error: e, category: LogCategory.database);
         }
       });
     }
@@ -266,9 +265,8 @@ class _ProductsScreenState extends ConsumerState<ProductsScreen> {
     final theme = Theme.of(context);
 
     // Get products based on search or category
-    final productsAsync = _isSearching
-        ? ref.watch(searchResultsProvider)
-        : ref.watch(productsProvider(selectedCategory));
+    final searchResults = _isSearching ? ref.watch(searchResultsProvider) : null;
+    final productsAsync = ref.watch(productsProvider(selectedCategory));
 
     // Check if current user is superadmin
     final isSuperAdmin = ExcelUploadService.isSuperAdmin;
@@ -374,7 +372,7 @@ class _ProductsScreenState extends ConsumerState<ProductsScreen> {
           // Products Grid
           Expanded(
             child: _isSearching
-                ? _buildProductsGrid(ref.watch(searchResultsProvider))
+                ? _buildProductsGrid(searchResults ?? [])
                 : productsAsync.when(
                     data: (products) => _buildProductsGrid(products),
                     loading: () => const Center(
@@ -473,6 +471,7 @@ class ProductCard extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
     final imagePath = ProductImageHelper.getImagePath(product.sku ?? product.model);
+    final dbService = ref.read(databaseServiceProvider);
 
     return Card(
       elevation: 2,
