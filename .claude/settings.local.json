@@ -17,7 +17,9 @@
       "Bash(dart run:*)",
       "Bash(mv:*)",
       "Bash(rm:*)",
-      "Bash(dart fix:*)"
+      "Bash(dart fix:*)",
+      "Bash(git rm:*)",
+      "Bash(true)"
     ],
     "deny": [],
     "ask": [
