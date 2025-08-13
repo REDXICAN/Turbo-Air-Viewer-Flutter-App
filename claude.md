@@ -4,12 +4,16 @@
 
 Enterprise B2B equipment catalog and quote management system with offline-first architecture, real-time synchronization, and complete email integration with PDF attachments.
 
-### Production Status: ✅ READY
+### Production Status: ✅ DEPLOYED
+- **Live URL**: https://turbo-air-viewer.web.app
+- **Firebase Console**: https://console.firebase.google.com/project/turbo-air-viewer/overview
 - All critical features implemented and tested
 - Security audit passed
 - Email with PDF attachments functional
 - Client CRUD operations complete
 - Quote management fully operational
+- Firebase Hosting deployment successful
+- 48 products loaded in database
 
 ## 🔧 Technical Architecture
 
@@ -176,6 +180,13 @@ FIREBASE_DATABASE_URL=https://turbo-air-viewer-default-rtdb.firebaseio.com
 
 ## 🚀 Deployment
 
+### Live Deployment Information
+- **Production URL**: https://turbo-air-viewer.web.app
+- **Alternative URL**: https://turbo-air-viewer.firebaseapp.com
+- **Firebase Project**: turbo-air-viewer
+- **Deployment Account**: andres.xbgo@gmail.com
+- **Last Deployed**: December 2025
+
 ### Firebase Hosting Configuration
 ```json
 {
@@ -185,6 +196,21 @@ FIREBASE_DATABASE_URL=https://turbo-air-viewer-default-rtdb.firebaseio.com
     "rewrites": [{"source": "**", "destination": "/index.html"}]
   }
 }
+```
+
+### Deployment Commands
+```bash
+# Login to Firebase
+firebase login
+
+# Build for production with HTML renderer
+flutter build web --release --web-renderer html
+
+# Deploy to Firebase Hosting
+firebase deploy --only hosting
+
+# Deploy everything (database rules, hosting, storage)
+firebase deploy
 ```
 
 ### Build Commands
@@ -239,6 +265,49 @@ flutter pub run flutter_launcher_icons
 flutter test
 ```
 
+## 🔑 Authentication & Access
+
+### Admin Login Credentials
+- **Email**: andres@turboairmexico.com
+- **Password**: Stored securely in .env file
+- **Note**: Authentication required to view products and clients
+
+### User Roles
+- **Super Admin**: Full system access, Excel import
+- **Admin**: Client and quote management
+- **Sales**: Create quotes, manage clients
+- **Distributor**: View products, create quotes
+
+## 🐛 Troubleshooting
+
+### Common Issues & Solutions
+
+#### White/Blank Page on Deployment
+- Clear browser cache (Ctrl+Shift+R)
+- Check browser console for errors (F12)
+- Ensure Firebase SDKs are loaded in index.html
+- Try incognito/private browsing mode
+
+#### Products/Clients Not Loading
+- Verify user is authenticated (sign in required)
+- Check Firebase database rules
+- Confirm Firebase project configuration
+- Database has 48 products loaded
+
+#### Authentication Errors
+- Ensure .env file exists locally
+- Verify Firebase Auth is enabled
+- Check API keys in firebase_options.dart
+- Confirm email/password combination
+
+#### Build Errors
+```bash
+# Clean and rebuild
+flutter clean
+flutter pub get
+flutter build web --release --web-renderer html
+```
+
 ## 📝 Code Quality
 
 ### Fixed Issues
@@ -277,8 +346,8 @@ git push origin main
 ## ✅ Production Checklist
 
 - [x] Environment variables configured
-- [x] Firebase security rules applied
-- [x] Email service with attachments
+- [x] Firebase security rules applied and deployed
+- [x] Email service with PDF attachments
 - [x] PDF generation functional
 - [x] Client CRUD operations
 - [x] Quote management complete
@@ -288,15 +357,31 @@ git push origin main
 - [x] Error handling comprehensive
 - [x] Authentication secure
 - [x] Role-based access control
-- [x] Product catalog complete
+- [x] Product catalog complete (48 products)
 - [x] Shopping cart persistent
 - [x] Admin panel functional
+- [x] Firebase Hosting deployed
+- [x] GitHub repository updated
+- [x] Production URL active
 
-## 🎉 Ready for Production
+## 🎉 Production Deployed
 
-All critical features implemented, tested, and functional. The application is ready for deployment and production use.
+Application successfully deployed to Firebase Hosting and fully operational.
+
+### Access the Application
+- **URL**: https://turbo-air-viewer.web.app
+- **Login**: Use admin credentials from .env file
+- **Support**: andres@turboairmexico.com
+
+### Key Metrics
+- **Products in Database**: 48
+- **Platform Support**: Web, Android, iOS, Windows
+- **Deployment Platform**: Firebase Hosting
+- **Database**: Firebase Realtime Database
+- **Authentication**: Firebase Auth
 
 ---
 
-Last Updated: December 2025
+Last Updated: January 2025
 Version: 1.0.0
+Deployment: Firebase Hosting (turbo-air-viewer)
