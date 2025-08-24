@@ -47,6 +47,7 @@ final quoteDetailProvider =
     id: quoteData['id'],
     clientId: quoteData['client_id'],
     quoteNumber: quoteData['quote_number'],
+    title: quoteData['title'],
     subtotal: (quoteData['subtotal'] ?? 0).toDouble(),
     tax: (quoteData['tax_amount'] ?? 0).toDouble(),
     total: (quoteData['total_amount'] ?? 0).toDouble(),
@@ -198,13 +199,30 @@ class QuoteDetailScreen extends ConsumerWidget {
                             Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                Text(
-                                  'Quote #${quote.quoteNumber}',
-                                  style:
-                                      theme.textTheme.headlineSmall?.copyWith(
-                                    fontWeight: FontWeight.bold,
+                                if (quote.title != null && quote.title!.isNotEmpty) ...[
+                                  Text(
+                                    quote.title!,
+                                    style:
+                                        theme.textTheme.headlineSmall?.copyWith(
+                                      fontWeight: FontWeight.bold,
+                                    ),
                                   ),
-                                ),
+                                  const SizedBox(height: 2),
+                                  Text(
+                                    'Quote #${quote.quoteNumber}',
+                                    style:
+                                        theme.textTheme.bodyLarge?.copyWith(
+                                      color: Colors.grey,
+                                    ),
+                                  ),
+                                ] else
+                                  Text(
+                                    'Quote #${quote.quoteNumber}',
+                                    style:
+                                        theme.textTheme.headlineSmall?.copyWith(
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
                                 const SizedBox(height: 4),
                                 Text(
                                   dateFormat.format(quote.createdAt),

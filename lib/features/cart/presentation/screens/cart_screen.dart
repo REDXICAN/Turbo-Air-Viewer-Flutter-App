@@ -129,12 +129,14 @@ class _CartScreenState extends ConsumerState<CartScreen> {
   final _discountController = TextEditingController(text: '0');
   final _commentController = TextEditingController();
   final _projectNameController = TextEditingController();
+  final _titleController = TextEditingController(); // Custom quote title
   bool _isDiscountPercentage = true; // true for percentage, false for fixed amount
   bool _includeCommentInEmail = false;
   bool _isCreatingQuote = false;
   bool _isOrderSummaryExpanded = false; // Start collapsed
   bool _isCommentsExpanded = false; // Start collapsed
   bool _isProjectExpanded = false; // Start collapsed
+  bool _isTitleExpanded = false; // Start collapsed
   String? _selectedProjectId;
   bool _createNewProject = false;
 
@@ -144,6 +146,7 @@ class _CartScreenState extends ConsumerState<CartScreen> {
     _discountController.dispose();
     _commentController.dispose();
     _projectNameController.dispose();
+    _titleController.dispose();
     super.dispose();
   }
 
@@ -1273,6 +1276,49 @@ class _CartScreenState extends ConsumerState<CartScreen> {
                       ),
                     ),
                     const SizedBox(height: 16),
+                    // Title Section - Collapsible
+                    Container(
+                      decoration: BoxDecoration(
+                        color: theme.cardColor,
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(color: theme.dividerColor.withOpacity(0.2)),
+                      ),
+                      child: Theme(
+                        data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
+                        child: ExpansionTile(
+                          title: Text(
+                            'Quote Title',
+                            style: theme.textTheme.bodyMedium?.copyWith(
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                          trailing: Icon(
+                            _isTitleExpanded ? Icons.expand_less : Icons.expand_more,
+                            color: theme.primaryColor,
+                          ),
+                          initiallyExpanded: _isTitleExpanded,
+                          onExpansionChanged: (expanded) {
+                            setState(() {
+                              _isTitleExpanded = expanded;
+                            });
+                          },
+                          childrenPadding: const EdgeInsets.fromLTRB(12, 0, 12, 12),
+                          children: [
+                            TextField(
+                              controller: _titleController,
+                              decoration: InputDecoration(
+                                hintText: 'Enter custom title (optional - defaults to date + order number)',
+                                border: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(4),
+                                ),
+                                prefixIcon: const Icon(Icons.title),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 16),
                     // Comment Section - Collapsible
                     Container(
                       decoration: BoxDecoration(
@@ -1719,7 +1765,7 @@ class _CartScreenState extends ConsumerState<CartScreen> {
               })
           .toList();
 
-      // Create quote with discount, comments, and project info
+      // Create quote with discount, comments, title, and project info
       final quoteId = await dbService.createQuote(
         clientId: client.id!,  // Now we know it's not null
         items: quoteItems,
@@ -1727,6 +1773,7 @@ class _CartScreenState extends ConsumerState<CartScreen> {
         taxRate: taxRate,
         taxAmount: taxAmount,
         totalAmount: total,
+        title: _titleController.text.trim(),
         discountAmount: discountAmount,
         discountType: _isDiscountPercentage ? 'percentage' : 'fixed',
         discountValue: discountValue,

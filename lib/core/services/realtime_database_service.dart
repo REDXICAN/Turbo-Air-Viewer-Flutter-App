@@ -425,6 +425,7 @@ class RealtimeDatabaseService {
     required double taxRate,
     required double taxAmount,
     required double totalAmount,
+    String? title,
     double? discountAmount,
     String? discountType,
     double? discountValue,
@@ -441,11 +442,14 @@ class RealtimeDatabaseService {
 
     try {
       final quoteNumber = 'Q${DateTime.now().millisecondsSinceEpoch}';
+      final dateStr = DateTime.now().toLocal().toString().split(' ')[0]; // YYYY-MM-DD format
+      final defaultTitle = '$dateStr - Order #${quoteNumber.substring(1, 8)}'; // Use first 7 digits of timestamp
       final newQuoteRef = _db.ref('quotes/$userId').push();
 
       await newQuoteRef.set({
         'client_id': clientId,
         'quote_number': quoteNumber,
+        'title': title?.isNotEmpty == true ? title : defaultTitle,
         'quote_items': items,  // Store items directly in the quote
         'subtotal': subtotal,
         'discount_amount': discountAmount ?? 0,

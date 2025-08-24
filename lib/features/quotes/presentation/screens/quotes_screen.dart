@@ -552,16 +552,32 @@ class _QuotesScreenState extends ConsumerState<QuotesScreen> {
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  // Quote number - make it flexible
+                  // Quote title or number - make it flexible
                   Flexible(
-                    child: Text(
-                      '#${quote.quoteNumber}',
-                      style: TextStyle(
-                        fontWeight: FontWeight.bold,
-                        fontSize: isMobile ? 14 : 16,
-                      ),
-                      overflow: TextOverflow.ellipsis,
-                      maxLines: 1,
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        if (quote.title != null && quote.title!.isNotEmpty)
+                          Text(
+                            quote.title!,
+                            style: TextStyle(
+                              fontWeight: FontWeight.bold,
+                              fontSize: isMobile ? 14 : 16,
+                            ),
+                            overflow: TextOverflow.ellipsis,
+                            maxLines: 1,
+                          ),
+                        Text(
+                          '#${quote.quoteNumber}',
+                          style: TextStyle(
+                            fontWeight: quote.title == null || quote.title!.isEmpty ? FontWeight.bold : FontWeight.normal,
+                            fontSize: quote.title == null || quote.title!.isEmpty ? (isMobile ? 14 : 16) : (isMobile ? 12 : 13),
+                            color: quote.title != null && quote.title!.isNotEmpty ? theme.textTheme.bodyMedium?.color?.withOpacity(0.7) : null,
+                          ),
+                          overflow: TextOverflow.ellipsis,
+                          maxLines: 1,
+                        ),
+                      ],
                     ),
                   ),
                   const SizedBox(width: 8),

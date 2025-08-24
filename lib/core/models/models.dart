@@ -362,6 +362,7 @@ class Product {
 class Quote {
   final String? id;
   final String? quoteNumber;
+  final String? title; // Custom title for the quote
   final String clientId;
   final String? clientName;
   final Client? client;
@@ -386,6 +387,7 @@ class Quote {
   Quote({
     this.id,
     this.quoteNumber,
+    this.title,
     required this.clientId,
     this.clientName,
     this.client,
@@ -412,6 +414,7 @@ class Quote {
     return {
       'id': id,
       'quoteNumber': quoteNumber,
+      'title': title,
       'clientId': clientId,
       'clientName': clientName,
       'client': client?.toMap(),
@@ -439,6 +442,7 @@ class Quote {
     return Quote(
       id: map['id'],
       quoteNumber: map['quoteNumber'],
+      title: map['title'],
       clientId: map['clientId'] ?? '',
       clientName: map['clientName'],
       client: map['client'] != null ? Client.fromMap(map['client']) : null,
