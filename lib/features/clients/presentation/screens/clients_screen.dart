@@ -834,33 +834,53 @@ class _ClientsScreenState extends ConsumerState<ClientsScreen> with SingleTicker
                                                         size: 20,
                                                       ),
                                                     ),
-                                                    title: Row(
+                                                    title: Column(
+                                                      crossAxisAlignment: CrossAxisAlignment.start,
                                                       children: [
-                                                        Text(
-                                                          'Quote #${quote.quoteNumber ?? quote.id?.substring(0, 8) ?? 'N/A'}',
-                                                          style: const TextStyle(fontWeight: FontWeight.w600),
+                                                        Row(
+                                                          children: [
+                                                            Expanded(
+                                                              child: Text(
+                                                                quote.title != null && quote.title!.isNotEmpty
+                                                                    ? quote.title!
+                                                                    : 'Quote #${quote.quoteNumber ?? quote.id?.substring(0, 8) ?? 'N/A'}',
+                                                                style: const TextStyle(fontWeight: FontWeight.w600),
+                                                                overflow: TextOverflow.ellipsis,
+                                                              ),
+                                                            ),
+                                                            const SizedBox(width: 8),
+                                                            Container(
+                                                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                                                              decoration: BoxDecoration(
+                                                                color: _getStatusColor(quote.status).withOpacity(0.2),
+                                                                borderRadius: BorderRadius.circular(12),
+                                                              ),
+                                                              child: Text(
+                                                                quote.status ?? 'Pending',
+                                                                style: TextStyle(
+                                                                  fontSize: 10,
+                                                                  color: _getStatusColor(quote.status),
+                                                                  fontWeight: FontWeight.bold,
+                                                                ),
+                                                              ),
+                                                            ),
+                                                          ],
                                                         ),
-                                                        const SizedBox(width: 8),
-                                                        Container(
-                                                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                                                          decoration: BoxDecoration(
-                                                            color: _getStatusColor(quote.status).withOpacity(0.2),
-                                                            borderRadius: BorderRadius.circular(12),
-                                                          ),
-                                                          child: Text(
-                                                            quote.status ?? 'Pending',
-                                                            style: TextStyle(
-                                                              fontSize: 10,
-                                                              color: _getStatusColor(quote.status),
-                                                              fontWeight: FontWeight.bold,
+                                                        if (quote.title != null && quote.title!.isNotEmpty)
+                                                          Text(
+                                                            'Quote #${quote.quoteNumber ?? quote.id?.substring(0, 8) ?? 'N/A'}',
+                                                            style: theme.textTheme.bodySmall?.copyWith(
+                                                              color: theme.textTheme.bodySmall?.color?.withOpacity(0.7),
                                                             ),
                                                           ),
-                                                        ),
                                                       ],
                                                     ),
-                                                    subtitle: Text(
-                                                      '${dateFormat.format(quote.createdAt)} • ${currencyFormat.format(quote.totalAmount)}',
-                                                      style: theme.textTheme.bodySmall,
+                                                    subtitle: Padding(
+                                                      padding: const EdgeInsets.only(top: 4),
+                                                      child: Text(
+                                                        '${dateFormat.format(quote.createdAt)} • ${currencyFormat.format(quote.totalAmount)}',
+                                                        style: theme.textTheme.bodySmall,
+                                                      ),
                                                     ),
                                                     children: [
                                                       // Quote Details
